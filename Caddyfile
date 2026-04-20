@@ -1,0 +1,4 @@
+65.109.143.115 {
+    encode gzip
+    reverse_proxy localhost:3000
+}

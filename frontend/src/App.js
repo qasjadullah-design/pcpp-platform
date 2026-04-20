@@ -1,0 +1,79 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Layouts
+import PublicLayout from './components/layout/PublicLayout';
+import DashboardLayout from './components/layout/DashboardLayout';
+
+// Public Pages
+import HomePage from './pages/public/HomePage';
+import ProjectsPage from './pages/public/ProjectsPage';
+import ProjectDetailPage from './pages/public/ProjectDetailPage';
+import LoginPage from './pages/public/LoginPage';
+import RegisterPage from './pages/public/RegisterPage';
+
+// Dashboard Pages
+import DashboardHome from './pages/dashboard/DashboardHome';
+import MyProjectsPage from './pages/dashboard/MyProjectsPage';
+import MyInterestsPage from './pages/dashboard/MyInterestsPage';
+import SettingsPage from './pages/dashboard/SettingsPage';
+import SubmitProjectPage from './pages/dashboard/SubmitProjectPage';
+
+// Admin Pages
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminReviewPage from './pages/admin/AdminReviewPage';
+import AdminProjectsPage from './pages/admin/AdminProjectsPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+
+import Spinner from './components/common/Spinner';
+
+const ProtectedRoute = ({ children, adminOnly = false }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner size="lg"/>;
+  if (!user) return <Navigate to="/login" replace/>;
+  if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" replace/>;
+  return children;
+};
+
+const AppRoutes = () => {
+  const { user } = useAuth();
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<PublicLayout><HomePage/></PublicLayout>}/>
+      <Route path="/projects" element={<PublicLayout><ProjectsPage/></PublicLayout>}/>
+      <Route path="/projects/:id" element={<PublicLayout><ProjectDetailPage/></PublicLayout>}/>
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace/> : <LoginPage/>}/>
+      <Route path="/register" element={user ? <Navigate to="/dashboard" replace/> : <RegisterPage/>}/>
+
+      {/* Dashboard Routes */}
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><DashboardHome/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/dashboard/projects" element={<ProtectedRoute><DashboardLayout><MyProjectsPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/dashboard/interests" element={<ProtectedRoute><DashboardLayout><MyInterestsPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/dashboard/submit" element={<ProtectedRoute><DashboardLayout><SubmitProjectPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage/></DashboardLayout></ProtectedRoute>}/>
+
+      {/* Admin Routes */}
+      <Route path="/admin" element={<ProtectedRoute adminOnly><DashboardLayout><AdminDashboard/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/admin/review" element={<ProtectedRoute adminOnly><DashboardLayout><AdminReviewPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/admin/projects" element={<ProtectedRoute adminOnly><DashboardLayout><AdminProjectsPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/admin/users" element={<ProtectedRoute adminOnly><DashboardLayout><AdminUsersPage/></DashboardLayout></ProtectedRoute>}/>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace/>}/>
+    </Routes>
+  );
+};
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '14px' } }}/>
+        <AppRoutes/>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}

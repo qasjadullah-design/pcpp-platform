@@ -1,0 +1,242 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { projectsAPI, interestsAPI } from '../../services/api';
+import { MOCK_FEATURED_PROJECTS } from '../../data/designMocks';
+import { useAuth } from '../../context/AuthContext';
+import Spinner from '../../components/common/Spinner';
+import Badge from '../../components/common/Badge';
+import Modal from '../../components/common/Modal';
+import Button from '../../components/common/Button';
+import { STATUS_COLORS, SDG_GOALS, TRL_LEVELS } from '../../utils/constants';
+import toast from 'react-hot-toast';
+
+const TABS = ['Overview','Financial','Team','Documents','Updates','Gallery'];
+
+export default function ProjectDetailPage() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('Overview');
+  const [interestModal, setInterestModal] = useState(false);
+  const [interestData, setInterestData] = useState({ message: '', investment_range_min: '', investment_range_max: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    projectsAPI
+      .getOne(id)
+      .then((r) => setProject(r.data))
+      .catch(() => {
+        const fallback = MOCK_FEATURED_PROJECTS.find((p) => p.id === id);
+        if (fallback) setProject(fallback);
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleInterest = async () => {
+    if (!user) { window.location.href = '/login'; return; }
+    setSubmitting(true);
+    try {
+      await interestsAPI.express(id, interestData);
+      toast.success('Interest expressed successfully!');
+      setInterestModal(false);
+    } catch(e) { toast.error(e.message || 'Failed to express interest'); }
+    finally { setSubmitting(false); }
+  };
+
+  if (loading) return <Spinner size="lg"/>;
+  if (!project) return <div className="text-center py-20 text-gray-500">Project not found</div>;
+
+  const fmt = (value) => {
+    if (value === null || value === undefined || value === '') return 'N/A';
+    if (typeof value === 'string') {
+      if (/B$/i.test(value) || /M$/i.test(value)) return `Rs ${value}`;
+      const asNumber = Number(value);
+      if (!Number.isNaN(asNumber)) value = asNumber;
+      else return value;
+    }
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    if (Math.abs(num) >= 1e9) return `Rs ${(num / 1e9).toFixed(1)}B`;
+    if (Math.abs(num) >= 1e6) return `Rs ${(num / 1e6).toFixed(1)}M`;
+    return `Rs ${num.toLocaleString()}`;
+  };
+  const trl = TRL_LEVELS.find(t => t.level === project.trl_level);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <Link to="/projects" className="text-sm text-gray-500 hover:text-emerald-600 mb-4 inline-block">← Back to Projects</Link>
+
+      {/* Header */}
+      <div className="bg-emerald-700 text-white rounded-2xl p-8 mb-6">
+        <div className="flex flex-wrap gap-3 mb-3">
+          <Badge label={project.status?.replace(/_/g,' ')} color={STATUS_COLORS[project.status]} />
+          {trl && <Badge label={`TRL ${project.trl_level}`} color="blue" />}
+        </div>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">{project.title}</h1>
+        <div className="flex flex-wrap gap-4 text-sm text-emerald-200 overflow-hidden">
+          {project.district && <span>📍 {project.district}, Pakistan</span>}
+          {project.primary_sector && <span>⚡ {project.primary_sector}</span>}
+          {project.organization_name && <span>🏢 {project.organization_name}</span>}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          {[
+            { label: 'Project Cost', value: fmt(project.total_cost) },
+            { label: 'Funding Gap', value: fmt(project.funding_gap) },
+            { label: 'Expected ROI', value: project.expected_roi ? `${project.expected_roi}%` : 'N/A' },
+            { label: 'Jobs Created', value: project.jobs_created?.toLocaleString() || 'N/A' },
+          ].map(s => (
+            <div key={s.label} className="bg-white/10 rounded-xl p-3">
+              <div className="text-xs text-emerald-200">{s.label}</div>
+              <div className="text-lg font-bold">{s.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2">
+          {/* Tabs */}
+          <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl mb-6">
+            {TABS.map(t => (
+              <button key={t} onClick={() => setTab(t)} className={`flex-1 min-w-fit px-4 py-2 rounded-lg text-sm font-medium transition ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}>{t}</button>
+            ))}
+          </div>
+
+          {tab === 'Overview' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <h2 className="font-semibold text-gray-900 mb-3">Project Overview</h2>
+                <p className="text-sm text-gray-600 leading-relaxed">{project.abstract}</p>
+                {project.description && <p className="text-sm text-gray-600 mt-3">{project.description}</p>}
+              </div>
+              {project.sdg_goals?.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h2 className="font-semibold text-gray-900 mb-3">SDG Alignment</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {project.sdg_goals.map(n => {
+                      const sdg = SDG_GOALS.find(s => s.id === n);
+                      return sdg ? <div key={n} className="flex items-center gap-1 px-3 py-1 rounded-full text-white text-xs font-medium" style={{ backgroundColor: sdg.color }}>{sdg.id}. {sdg.name}</div> : null;
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === 'Financial' && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h2 className="font-semibold text-gray-900 mb-4">Financial Information</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  ['Total Cost', fmt(project.total_cost)], ['Funding Gap', fmt(project.funding_gap)],
+                  ['Expected ROI', project.expected_roi ? `${project.expected_roi}%` : 'N/A'], ['Payback Period', project.payback_years ? `${project.payback_years} years` : 'N/A'],
+                  ['Equity Fund', fmt(project.equity_fund)], ['Debt/Loan', fmt(project.debt_loan)],
+                  ['Grant', fmt(project.grant_amount)], ['Min Investment', fmt(project.min_investment)],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-500">{k}</span>
+                    <span className="text-sm font-medium text-gray-900">{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'Team' && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h2 className="font-semibold text-gray-900 mb-4">Project Team</h2>
+              {project.project_lead && (
+                <div className="mb-4 p-4 bg-emerald-50 rounded-xl">
+                  <p className="font-medium text-gray-900">{project.project_lead.name}</p>
+                  <p className="text-sm text-gray-600">{project.project_lead.designation}</p>
+                  <p className="text-sm text-gray-500">{project.project_lead.email}</p>
+                </div>
+              )}
+              {project.team_members?.map((m, i) => (
+                <div key={i} className="p-3 border-b border-gray-100 flex justify-between text-sm">
+                  <span className="font-medium">{m.name}</span><span className="text-gray-500">{m.designation}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === 'Documents' && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h2 className="font-semibold text-gray-900 mb-4">Documents</h2>
+              {project.documents && Object.entries(project.documents).filter(([,v]) => v).map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <span className="text-sm text-gray-700 capitalize">{k.replace(/_/g, ' ')}</span>
+                  <a href={v} target="_blank" rel="noreferrer" className="text-sm text-emerald-600 hover:underline">Download</a>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === 'Updates' && (
+            <div className="space-y-4">
+              {project.updates?.length === 0 && <p className="text-gray-500 text-sm text-center py-8">No updates yet.</p>}
+              {project.updates?.map(u => (
+                <div key={u.id} className="bg-white border border-gray-200 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full capitalize">{u.update_type}</span>
+                    <span className="text-xs text-gray-400">{new Date(u.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <h3 className="font-medium text-gray-900 mb-1">{u.title}</h3>
+                  <p className="text-sm text-gray-600">{u.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+            <h3 className="font-semibold text-gray-900 mb-3">Quick Facts</h3>
+            {[
+              ['Project Cost', fmt(project.total_cost)], ['Funding Gap', fmt(project.funding_gap)],
+              ['Expected ROI', project.expected_roi ? `${project.expected_roi}%` : 'N/A'],
+              ['Timeline', project.start_date && project.end_date ? `${project.start_date.slice(0,4)}–${project.end_date.slice(0,4)}` : 'N/A'],
+              ['TRL Level', project.trl_level || 'N/A'], ['Jobs Created', project.jobs_created?.toLocaleString() || 'N/A'],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between py-2 border-b border-gray-100 text-sm">
+                <span className="text-gray-500">{k}</span><span className="font-medium text-gray-900">{v}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-emerald-600 text-white rounded-2xl p-5">
+            <h3 className="font-semibold mb-1">Invest in this Project</h3>
+            <p className="text-xs text-emerald-100 mb-4">Connect with project owner</p>
+            <Button className="w-full justify-center mb-2" onClick={() => setInterestModal(true)}>Invest Now</Button>
+            {!user && <Link to="/register" className="block text-center text-sm border border-white/50 text-white py-2 rounded-lg hover:bg-white/10">Register</Link>}
+          </div>
+
+          {(project.project_lead?.email || project.project_lead?.phone) && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5">
+              <h3 className="font-semibold text-gray-900 mb-3">Project Contact</h3>
+              {project.project_lead?.email && <p className="text-sm text-gray-600 flex items-center gap-2">📧 {project.project_lead.email}</p>}
+              {project.project_lead?.phone && <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">📞 {project.project_lead.phone}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Modal isOpen={interestModal} onClose={() => setInterestModal(false)} title="Express Investment Interest">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Message to Project Owner</label>
+            <textarea rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Describe your investment interest..." value={interestData.message} onChange={e => setInterestData(d => ({ ...d, message: e.target.value }))}/>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Min Investment (PKR)</label><input type="number" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" value={interestData.investment_range_min} onChange={e => setInterestData(d => ({ ...d, investment_range_min: e.target.value }))}/></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Max Investment (PKR)</label><input type="number" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" value={interestData.investment_range_max} onChange={e => setInterestData(d => ({ ...d, investment_range_max: e.target.value }))}/></div>
+          </div>
+          <Button className="w-full justify-center" loading={submitting} onClick={handleInterest}>Submit Interest</Button>
+        </div>
+      </Modal>
+    </div>
+  );
+}
