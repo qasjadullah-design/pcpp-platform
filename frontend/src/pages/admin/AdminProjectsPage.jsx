@@ -22,11 +22,13 @@ export default function AdminProjectsPage() {
   const fetchProjects = () => {
     setLoading(true);
     projectsAPI.getAll({ ...filters, limit: 10 })
-      .then(r => {
-        setProjects(r.data);
-        setTotal(r.count);
+    .then(r => {
+        const list = r.data.projects || r.data || [];
+        const count = r.data.total || r.count || list.length;
+        setProjects(list);
+        setTotal(count);
         const s = { under_review: 0, approved: 0, archived: 0 };
-        r.data.forEach(p => { if (s[p.status] !== undefined) s[p.status]++; });
+        list.forEach(p => { if (s[p.status] !== undefined) s[p.status]++; });
         setStats(s);
       })
       .catch(()=>{}).finally(()=>setLoading(false));

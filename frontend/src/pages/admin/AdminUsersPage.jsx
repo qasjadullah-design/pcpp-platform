@@ -10,7 +10,7 @@ export default function AdminUsersPage() {
   const [filters, setFilters] = useState({ search:'', role:'', status:'' });
 
   useEffect(() => {
-    adminAPI.getUsers(filters).then(r=>setUsers(r.data)).catch(()=>{}).finally(()=>setLoading(false));
+    adminAPI.getUsers(filters).then(r=>setUsers(r.data.users || r.data || []));
   }, [filters]);
 
   const handleStatus = async (id, status) => {
