@@ -15,7 +15,7 @@ export default function AdminReviewPage() {
 
   useEffect(() => {
     projectsAPI.getAll({ status: 'under_review', limit: 20 })
-      .then(r => setProjects(r.data)).catch(()=>{}).finally(()=>setLoading(false));
+      .then(r => setProjects(r.data.projects || r.data || [])).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
 
   const handleReview = async () => {
