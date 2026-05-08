@@ -8,17 +8,17 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminAPI.getAnalytics().then(r => setData(r.data)).catch(()=>{}).finally(()=>setLoading(false));
+    adminAPI.getDashboard().then(r => setData(r)).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
 
   if (loading) return <Spinner size="lg"/>;
 
-  const metrics = [
-    { icon: '📁', label: 'Total Projects', value: data?.status_stats?.reduce((a,s)=>a+parseInt(s.count),0)||0, color: 'text-blue-600' },
+ const metrics = [
+    { icon: '📁', label: 'Total Projects', value: data?.total_projects||0, color: 'text-blue-600' },
     { icon: '🔄', label: 'Pending Review', value: data?.pending_review||0, color: 'text-yellow-600', urgent: true },
-    { icon: '👥', label: 'Total Users', value: data?.user_count||0, color: 'text-purple-600' },
+    { icon: '👥', label: 'Total Users', value: data?.total_users||0, color: 'text-purple-600' },
     { icon: '💰', label: 'Total Funding', value: 'PKR 850B', color: 'text-emerald-600' },
-  ];
+    ];
 
   return (
     <div className="p-8">

@@ -57,6 +57,7 @@ export const adminAPI = {
   reviewProject: (id, data) => api.put(`/admin/projects/${id}/review`, data),
   changeProjectStatus: (id, status) => api.put(`/admin/projects/${id}/status`, { status }),
   getAnalytics: () => api.get('/admin/analytics'),
+  getDashboard: () => api.get('/admin/dashboard'),
   getUsers: (params) => api.get('/admin/users', { params }),
   updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { status }),
 };
