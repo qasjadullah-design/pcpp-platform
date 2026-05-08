@@ -21,10 +21,10 @@ export default function AdminProjectsPage() {
 
   const fetchProjects = () => {
     setLoading(true);
-    projectsAPI.getAll({ ...filters, limit: 10 })
+    adminAPI.getProjects({ ...filters, limit: 10 })
     .then(r => {
-        const list = r.data.projects || r.data || [];
-        const count = r.data.total || r.count || list.length;
+        const list = r.projects || r || [];
+        const count = r.total || list.length;;
         setProjects(list);
         setTotal(count);
         const s = { under_review: 0, approved: 0, archived: 0 };
