@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { getProjects, getProject, createProject, updateProject, deleteProject, submitProject, getMyProjects, toggleSave, getSavedProjects, postUpdate, getStats } = require('../controllers/projectController');
+const { getProjects, getProject, createProject, updateProject, deleteProject, submitProject, getMyProjects, toggleSave, getSavedProjects, postUpdate, getStats, getStatsByProvince } = require('../controllers/projectController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 router.get('/stats', getStats);
+router.get('/stats/by-province', getStatsByProvince);
 router.get('/my', protect, getMyProjects);
 router.get('/saved', protect, getSavedProjects);
 router.get('/', getProjects);
-router.get('/stats/by-province', projectController.getStatsByProvince);
 router.get('/:id', getProject);
 router.post('/', protect, createProject);
 router.put('/:id', protect, updateProject);
