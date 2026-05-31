@@ -93,21 +93,24 @@ async function main() {
 
   console.log('PCPP ADP/PSDP import started');
   console.log(`File: ${filePath}`);
-  console.log(`Mode: ${dryRun ? 'DRY RUN - no database insert' : 'LIVE DATABASE INSERT'}`);
+  console.log(`Mode: ${dryRun ? 'DRY RUN - Excel validation only, no database connection' : 'LIVE DATABASE INSERT'}`);
   console.log(`Limit: ${limit || 'all rows'}`);
   console.log(`Status for imported projects: ${status}`);
 
-  await connectDB();
-  const owner = await getOwnerUser(ownerEmail);
-  console.log(`Owner user: ${owner.email} (${owner.id})`);
+  let owner = null;
+  if (!dryRun) {
+    await connectDB();
+    owner = await getOwnerUser(ownerEmail);
+    console.log(`Owner user: ${owner.email} (${owner.id})`);
 
-  if (replaceImported && !dryRun) {
-    const deleted = await Project.destroy({
-      where: {
-        tags: { [Op.contains]: [IMPORT_TAG] },
-      },
-    });
-    console.log(`Deleted previous imported rows with tag ${IMPORT_TAG}: ${deleted}`);
+    if (replaceImported) {
+      const deleted = await Project.destroy({
+        where: {
+          tags: { [Op.contains]: [IMPORT_TAG] },
+        },
+      });
+      console.log(`Deleted previous imported rows with tag ${IMPORT_TAG}: ${deleted}`);
+    }
   }
 
   const workbook = new ExcelJS.Workbook();
@@ -135,6 +138,7 @@ async function main() {
   let skippedInvalidAmount = 0;
   let skippedDuplicate = 0;
   const errors = [];
+  const seenInFile = new Set();
 
   const transaction = dryRun ? null : await sequelize.transaction();
 
@@ -168,13 +172,22 @@ async function main() {
 
       valid++;
 
-      const existing = await Project.findOne({
-        where: { title, province, district },
-        transaction,
-      });
-      if (existing) {
+      const duplicateKey = `${title}||${province}||${district}`.toLowerCase();
+      if (seenInFile.has(duplicateKey)) {
         skippedDuplicate++;
         continue;
+      }
+      seenInFile.add(duplicateKey);
+
+      if (!dryRun) {
+        const existing = await Project.findOne({
+          where: { title, province, district },
+          transaction,
+        });
+        if (existing) {
+          skippedDuplicate++;
+          continue;
+        }
       }
 
       const totalCostPkr = Math.round(amountMillion * 1_000_000);
@@ -191,7 +204,7 @@ async function main() {
         total_cost: totalCostPkr,
         funding_gap: totalCostPkr,
         organization_name: `${province} Government`,
-        user_id: owner.id,
+        user_id: owner ? owner.id : 'DRY_RUN_OWNER_ID',
         impact_metrics: {
           source: 'ADP/PSDP bulk import',
           funding_type: fundingType,
