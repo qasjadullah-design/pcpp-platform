@@ -164,3 +164,35 @@ exports.getStats = async (req, res, next) => {
     res.status(200).json({ success: true, data: formatted });
   } catch (error) { next(error); }
 };
+
+// @GET /api/projects/stats/by-province - Public
+exports.getStatsByProvince = async (req, res, next) => {
+  try {
+    const { sequelize } = require('../config/database');
+
+    const [results] = await sequelize.query(`
+      SELECT
+        province,
+        status,
+        COUNT(*)::int AS project_count,
+        COALESCE(SUM(total_cost), 0)::numeric AS total_investment
+      FROM public.projects
+      WHERE province IS NOT NULL
+        AND status IN ('approved','under_implementation','completed','archived')
+      GROUP BY province, status
+      ORDER BY province, status;
+    `);
+
+    const byProvince = {};
+    for (const row of results) {
+      if (!byProvince[row.province]) {
+        byProvince[row.province] = { total_projects: 0, total_investment: 0, by_status: {} };
+      }
+      byProvince[row.province].by_status[row.status] = row.project_count;
+      byProvince[row.province].total_projects += row.project_count;
+      byProvince[row.province].total_investment += parseFloat(row.total_investment) || 0;
+    }
+
+    res.status(200).json({ success: true, data: byProvince });
+  } catch (error) { next(error); }
+};

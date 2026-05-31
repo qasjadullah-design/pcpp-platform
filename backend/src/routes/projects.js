@@ -8,6 +8,7 @@ router.get('/stats', getStats);
 router.get('/my', protect, getMyProjects);
 router.get('/saved', protect, getSavedProjects);
 router.get('/', getProjects);
+router.get('/stats/by-province', projectController.getStatsByProvince);
 router.get('/:id', getProject);
 router.post('/', protect, createProject);
 router.put('/:id', protect, updateProject);

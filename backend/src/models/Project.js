@@ -6,6 +6,7 @@ const Project = sequelize.define('Project', {
   title: { type: DataTypes.STRING(300), allowNull: false },
   abstract: { type: DataTypes.TEXT, allowNull: false },
   description: { type: DataTypes.TEXT },
+  province: { type: DataTypes.ENUM('Punjab','Sindh','Khyber Pakhtunkhwa','Balochistan','Gilgit-Baltistan','Azad Jammu and Kashmir','Islamabad Capital Territory'), allowNull: true, validate: { isIn: { args: [['Punjab','Sindh','Khyber Pakhtunkhwa','Balochistan','Gilgit-Baltistan','Azad Jammu and Kashmir','Islamabad Capital Territory']], msg: 'Province must be a valid Pakistani region' } } },
   primary_sector: { type: DataTypes.STRING(100), allowNull: false },
   sub_sectors: { type: DataTypes.ARRAY(DataTypes.STRING) },
   sdg_goals: { type: DataTypes.ARRAY(DataTypes.INTEGER) },

@@ -8,9 +8,12 @@ class APIFeatures {
         { title: { [Op.iLike]: `%${query.search}%` } },
         { abstract: { [Op.iLike]: `%${query.search}%` } },
         { organization_name: { [Op.iLike]: `%${query.search}%` } },
+        { province: { [Op.iLike]: `%${query.search}%` } },
+        { district: { [Op.iLike]: `%${query.search}%` } },
       ];
     }
     if (query.sector) where.primary_sector = query.sector;
+    if (query.province) where.province = query.province;
     if (query.district) where.district = query.district;
     if (query.status) where.status = query.status;
     if (query.trl) where.trl_level = query.trl;
