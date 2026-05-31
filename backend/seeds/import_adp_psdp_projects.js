@@ -1,4 +1,5 @@
 require('dotenv').config();
+const fs = require('fs');
 const path = require('path');
 const ExcelJS = require('exceljs');
 const { Op } = require('sequelize');
@@ -45,7 +46,7 @@ function parseAmountMillion(value) {
 }
 
 function normalizeHeader(header) {
-  return cellToString(header).toLowerCase().replace(/\s+/g, '_').trim();
+  return cellToString(header).replace(/^\uFEFF/, '').toLowerCase().replace(/\s+/g, '_').trim();
 }
 
 function normalizeProvince(value) {
@@ -69,48 +70,60 @@ function normalizeProvince(value) {
   return map[raw.toLowerCase()] || raw;
 }
 
-async function getOwnerUser(ownerEmail) {
-  let owner = await User.findOne({ where: { email: ownerEmail } });
-  if (owner) return owner;
+function parseCsv(content) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
 
-  owner = await User.findOne({ where: { role: 'admin' }, order: [['created_at', 'ASC']] });
-  if (owner) return owner;
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const next = content[i + 1];
 
-  throw new Error(`No owner user found. Tried owner email: ${ownerEmail}, then first admin user.`);
-}
-
-async function main() {
-  const filePath = getArg('file', path.join(__dirname, 'data', 'pcpp_projects_import_master.xlsx'));
-  const ownerEmail = getArg('owner-email', 'admin@pcpp.gov.pk');
-  const limit = Number(getArg('limit', '0')) || 0;
-  const dryRun = hasFlag('dry-run');
-  const replaceImported = hasFlag('replace-imported');
-  const status = getArg('status', 'draft');
-
-  if (!['draft', 'under_review', 'approved'].includes(status)) {
-    throw new Error('Invalid --status value. Use draft, under_review, or approved.');
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        field += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push(field);
+      field = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i++;
+      row.push(field);
+      if (row.some(v => cellToString(v) !== '')) rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += char;
+    }
   }
 
-  console.log('PCPP ADP/PSDP import started');
-  console.log(`File: ${filePath}`);
-  console.log(`Mode: ${dryRun ? 'DRY RUN - Excel validation only, no database connection' : 'LIVE DATABASE INSERT'}`);
-  console.log(`Limit: ${limit || 'all rows'}`);
-  console.log(`Status for imported projects: ${status}`);
+  if (field || row.length) {
+    row.push(field);
+    if (row.some(v => cellToString(v) !== '')) rows.push(row);
+  }
 
-  let owner = null;
-  if (!dryRun) {
-    await connectDB();
-    owner = await getOwnerUser(ownerEmail);
-    console.log(`Owner user: ${owner.email} (${owner.id})`);
+  return rows;
+}
 
-    if (replaceImported) {
-      const deleted = await Project.destroy({
-        where: {
-          tags: { [Op.contains]: [IMPORT_TAG] },
-        },
+async function loadRows(filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+
+  if (extension === '.csv') {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const rows = parseCsv(content);
+    if (!rows.length) throw new Error('CSV file is empty.');
+    const headers = rows[0].map(normalizeHeader);
+    return rows.slice(1).map((row, index) => {
+      const record = { rowNumber: index + 2 };
+      headers.forEach((header, colIndex) => {
+        record[header] = row[colIndex] || '';
       });
-      console.log(`Deleted previous imported rows with tag ${IMPORT_TAG}: ${deleted}`);
-    }
+      return record;
+    });
   }
 
   const workbook = new ExcelJS.Workbook();
@@ -130,6 +143,74 @@ async function main() {
     throw new Error(`Missing required columns: ${missing.join(', ')}`);
   }
 
+  const records = [];
+  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
+    const row = sheet.getRow(rowNumber);
+    records.push({
+      rowNumber,
+      province: row.getCell(columns.province).value,
+      district: row.getCell(columns.district).value,
+      title: row.getCell(columns.title).value,
+      funding_type: row.getCell(columns.funding_type).value,
+      funding_amount: row.getCell(columns.funding_amount).value,
+    });
+  }
+  return records;
+}
+
+async function getOwnerUser(ownerEmail) {
+  let owner = await User.findOne({ where: { email: ownerEmail } });
+  if (owner) return owner;
+
+  owner = await User.findOne({ where: { role: 'admin' }, order: [['created_at', 'ASC']] });
+  if (owner) return owner;
+
+  throw new Error(`No owner user found. Tried owner email: ${ownerEmail}, then first admin user.`);
+}
+
+async function main() {
+  const filePath = getArg('file', path.join(__dirname, 'data', 'pcpp_projects_import_master.csv'));
+  const ownerEmail = getArg('owner-email', 'admin@pcpp.gov.pk');
+  const limit = Number(getArg('limit', '0')) || 0;
+  const dryRun = hasFlag('dry-run');
+  const replaceImported = hasFlag('replace-imported');
+  const status = getArg('status', 'draft');
+
+  if (!['draft', 'under_review', 'approved'].includes(status)) {
+    throw new Error('Invalid --status value. Use draft, under_review, or approved.');
+  }
+
+  console.log('PCPP ADP/PSDP import started');
+  console.log(`File: ${filePath}`);
+  console.log(`Mode: ${dryRun ? 'DRY RUN - file validation only, no database connection' : 'LIVE DATABASE INSERT'}`);
+  console.log(`Limit: ${limit || 'all rows'}`);
+  console.log(`Status for imported projects: ${status}`);
+
+  let owner = null;
+  if (!dryRun) {
+    await connectDB();
+    owner = await getOwnerUser(ownerEmail);
+    console.log(`Owner user: ${owner.email} (${owner.id})`);
+
+    if (replaceImported) {
+      const deleted = await Project.destroy({
+        where: {
+          tags: { [Op.contains]: [IMPORT_TAG] },
+        },
+      });
+      console.log(`Deleted previous imported rows with tag ${IMPORT_TAG}: ${deleted}`);
+    }
+  }
+
+  const records = await loadRows(filePath);
+
+  const required = ['province', 'district', 'title', 'funding_type', 'funding_amount'];
+  const firstRecord = records[0] || {};
+  const missing = required.filter(col => !(col in firstRecord));
+  if (missing.length) {
+    throw new Error(`Missing required columns: ${missing.join(', ')}`);
+  }
+
   let scanned = 0;
   let valid = 0;
   let inserted = 0;
@@ -143,17 +224,16 @@ async function main() {
   const transaction = dryRun ? null : await sequelize.transaction();
 
   try {
-    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
+    for (const record of records) {
       if (limit && valid >= limit) break;
 
-      const row = sheet.getRow(rowNumber);
       scanned++;
 
-      const title = cellToString(row.getCell(columns.title).value);
-      const province = normalizeProvince(row.getCell(columns.province).value);
-      const district = cellToString(row.getCell(columns.district).value);
-      const fundingType = cellToString(row.getCell(columns.funding_type).value);
-      const amountMillion = parseAmountMillion(row.getCell(columns.funding_amount).value);
+      const title = cellToString(record.title);
+      const province = normalizeProvince(record.province);
+      const district = cellToString(record.district);
+      const fundingType = cellToString(record.funding_type);
+      const amountMillion = parseAmountMillion(record.funding_amount);
 
       if (!title) {
         skippedBlankTitle++;
@@ -161,12 +241,12 @@ async function main() {
       }
       if (!VALID_PROVINCES.has(province)) {
         skippedInvalidProvince++;
-        errors.push({ rowNumber, title, province, error: 'Invalid province' });
+        errors.push({ rowNumber: record.rowNumber, title, province, error: 'Invalid province' });
         continue;
       }
       if (amountMillion === null) {
         skippedInvalidAmount++;
-        errors.push({ rowNumber, title, funding_amount: cellToString(row.getCell(columns.funding_amount).value), error: 'Invalid funding amount' });
+        errors.push({ rowNumber: record.rowNumber, title, funding_amount: cellToString(record.funding_amount), error: 'Invalid funding amount' });
         continue;
       }
 
