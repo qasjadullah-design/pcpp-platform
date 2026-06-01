@@ -146,17 +146,17 @@ router.post('/', authenticate, async (req, res) => {
 
     const result = await client.query(`
       INSERT INTO projects (
-        title, abstract, description, primary_sector, sub_sectors,
-        trl_level, risk_level, priority_level, status,
-        duration_months, start_date, expected_completion,
-        district, city, address,
-        currency, total_project_cost, research_fund, equity_fund,
-        debt_loan, grant_amount, funding_gap, min_investment, expected_roi, payback_years,
-        direct_beneficiaries, indirect_beneficiaries, jobs_created,
-        organization_name, organization_type, organization_website,
-        tags, owner_id
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'draft',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)
-      RETURNING *
+  title, abstract, description, primary_sector, sub_sectors,
+  trl_level, risk_level, priority_level, status,
+  duration_months, start_date, end_date,
+  district, city, address,
+  currency, total_cost, research_fund, equity_fund,
+  debt_loan, grant_amount, funding_gap, minimum_investment, expected_roi, payback_years,
+  direct_beneficiaries, indirect_beneficiaries, jobs_created,
+  organization_name, organization_type, organization_website,
+  tags, user_id
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)
+RETURNING *
     `, [
       title, abstract, description, primary_sector, sub_sectors,
       trl_level, risk_level, priority_level,
