@@ -38,15 +38,15 @@ export const SDG_GOALS = [
 ];
 
 export const TRL_LEVELS = [
-  { level: 1, name: 'Basic Principles' },
-  { level: 2, name: 'Concept Formulated' },
-  { level: 3, name: 'Proof of Concept' },
-  { level: 4, name: 'Lab Validated' },
-  { level: 5, name: 'Relevant Environment' },
-  { level: 6, name: 'Prototype' },
-  { level: 7, name: 'System Complete' },
-  { level: 8, name: 'Proven' },
-  { level: 9, name: 'Operational' },
+  { level: 1, name: 'Basic Principles', desc: 'Basic scientific principles observed and reported.' },
+  { level: 2, name: 'Concept Formulated', desc: 'Technology concept and potential application formulated.' },
+  { level: 3, name: 'Proof of Concept', desc: 'Experimental proof of concept demonstrated.' },
+  { level: 4, name: 'Lab Validated', desc: 'Technology validated in a laboratory environment.' },
+  { level: 5, name: 'Relevant Environment', desc: 'Technology validated in a relevant (real-world) environment.' },
+  { level: 6, name: 'Prototype', desc: 'Prototype demonstrated in a relevant environment.' },
+  { level: 7, name: 'System Complete', desc: 'System prototype demonstrated in an operational environment.' },
+  { level: 8, name: 'Proven', desc: 'Actual system completed and qualified through testing.' },
+  { level: 9, name: 'Operational', desc: 'Actual system proven in a full operational environment.' },
 ];
 
 export const CURRENCIES = ['PKR','USD','EUR','GBP','CNY','AED','SAR','JPY'];

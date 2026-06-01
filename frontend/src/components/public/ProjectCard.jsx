@@ -12,6 +12,8 @@ import {
   BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 import { getSectorColor, getStatusAccent } from '../../utils/designTokens';
+import Tooltip from '../common/Tooltip';
+import { trlText } from '../../utils/trl';
 
 const sectorIconMap = {
   energy: BoltIcon,
@@ -88,9 +90,11 @@ export default function ProjectCard({ project }) {
           {sector}
         </span>
         {trl && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
-            TRL-{trl}
-          </span>
+          <Tooltip content={trlText(trl)}>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 cursor-help">
+              TRL-{trl}
+            </span>
+          </Tooltip>
         )}
       </div>
 

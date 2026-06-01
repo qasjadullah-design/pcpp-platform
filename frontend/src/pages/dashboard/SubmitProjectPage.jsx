@@ -105,7 +105,7 @@ export default function SubmitProjectPage() {
               <p className="text-sm text-gray-500 mb-3">Technology Readiness Level (TRL)</p>
               <div className="flex gap-3 flex-wrap">
                 {TRL_LEVELS.map(t => (
-                  <button key={t.level} onClick={()=>f('trl_level',t.level)} className={`flex flex-col items-center p-3 border rounded-xl transition min-w-16 ${form.trl_level===t.level?'border-emerald-500 bg-emerald-50':'border-gray-200 hover:border-gray-300'}`}>
+                  <button key={t.level} type="button" title={`TRL ${t.level}: ${t.name} — ${t.desc}`} onClick={()=>f('trl_level',t.level)} className={`flex flex-col items-center p-3 border rounded-xl transition min-w-16 ${form.trl_level===t.level?'border-emerald-500 bg-emerald-50':'border-gray-200 hover:border-gray-300'}`}>
                     <span className="font-bold text-lg text-gray-800">{t.level}</span>
                     <span className="text-xs text-gray-500 text-center leading-tight">{t.name}</span>
                   </button>

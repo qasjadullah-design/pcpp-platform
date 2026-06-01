@@ -10,7 +10,10 @@ router.use(authenticate, requireAdmin);
 // GET dashboard stats
 router.get('/dashboard', async (req, res) => {
   try {
-    const [total, pending, users, funding, recentProjects, recentActivity, topSectors] = await Promise.all([
+    const [
+      total, pending, users, funding, recentProjects, recentActivity,
+      sectorStats, statusStats, trlStats, districtStats, topInvestors
+    ] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM projects'),
       pool.query("SELECT COUNT(*) FROM projects WHERE status = 'under_review'"),
       pool.query('SELECT COUNT(*) FROM users'),
@@ -28,10 +31,37 @@ router.get('/dashboard', async (req, res) => {
           SELECT 'user_registered', first_name || ' ' || last_name, created_at FROM users
         ) activity ORDER BY created_at DESC LIMIT 10
       `),
+      // By Sector — counts all statuses so the card is populated regardless of import status
       pool.query(`
         SELECT primary_sector, COUNT(*) AS count
-        FROM projects WHERE status != 'draft' AND primary_sector IS NOT NULL
-        GROUP BY primary_sector ORDER BY count DESC LIMIT 5
+        FROM projects WHERE primary_sector IS NOT NULL
+        GROUP BY primary_sector ORDER BY count DESC
+      `),
+      // By Status — drives the By Status card and the A2 lifecycle breakdown
+      pool.query(`
+        SELECT status, COUNT(*) AS count
+        FROM projects GROUP BY status ORDER BY count DESC
+      `),
+      // TRL distribution
+      pool.query(`
+        SELECT trl_level, COUNT(*) AS count
+        FROM projects WHERE trl_level IS NOT NULL
+        GROUP BY trl_level ORDER BY trl_level
+      `),
+      // By District (top 10)
+      pool.query(`
+        SELECT district, COUNT(*) AS count, COALESCE(SUM(total_cost),0) AS total
+        FROM projects WHERE district IS NOT NULL
+        GROUP BY district ORDER BY count DESC LIMIT 10
+      `),
+      // Top Investors — interests.user_id is the real column (not investor_id)
+      pool.query(`
+        SELECT u.id, u.first_name, u.last_name, u.organization,
+               COUNT(i.id) AS interests,
+               COALESCE(MAX(i.investment_range_max),0) AS max_investment
+        FROM interests i JOIN users u ON i.user_id = u.id
+        GROUP BY u.id, u.first_name, u.last_name, u.organization
+        ORDER BY interests DESC LIMIT 10
       `)
     ]);
 
@@ -42,7 +72,12 @@ router.get('/dashboard', async (req, res) => {
       total_funding: parseInt(funding.rows[0].total),
       recent_projects: recentProjects.rows,
       recent_activity: recentActivity.rows,
-      top_sectors: topSectors.rows
+      sector_stats: sectorStats.rows,
+      status_stats: statusStats.rows,
+      trl_stats: trlStats.rows,
+      district_stats: districtStats.rows,
+      top_investors: topInvestors.rows,
+      top_sectors: sectorStats.rows
     });
   } catch (err) {
     console.error(err);

@@ -7,7 +7,9 @@ import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
+import Tooltip from '../../components/common/Tooltip';
 import { STATUS_COLORS, SDG_GOALS, TRL_LEVELS } from '../../utils/constants';
+import { trlText } from '../../utils/trl';
 import toast from 'react-hot-toast';
 
 const TABS = ['Overview','Financial','Team','Documents','Updates','Gallery'];
@@ -71,7 +73,7 @@ export default function ProjectDetailPage() {
       <div className="bg-emerald-700 text-white rounded-2xl p-8 mb-6">
         <div className="flex flex-wrap gap-3 mb-3">
           <Badge label={project.status?.replace(/_/g,' ')} color={STATUS_COLORS[project.status]} />
-          {trl && <Badge label={`TRL ${project.trl_level}`} color="blue" />}
+          {trl && <Tooltip content={trlText(project.trl_level)}><Badge label={`TRL ${project.trl_level}`} color="blue" /></Tooltip>}
         </div>
         <h1 className="text-2xl md:text-3xl font-bold mb-2">{project.title}</h1>
         <div className="flex flex-wrap gap-4 text-sm text-emerald-200 overflow-hidden">
@@ -199,7 +201,7 @@ export default function ProjectDetailPage() {
               ['Project Cost', fmt(project.total_cost)], ['Funding Gap', fmt(project.funding_gap)],
               ['Expected ROI', project.expected_roi ? `${project.expected_roi}%` : 'N/A'],
               ['Timeline', project.start_date && project.end_date ? `${project.start_date.slice(0,4)}–${project.end_date.slice(0,4)}` : 'N/A'],
-              ['TRL Level', project.trl_level || 'N/A'], ['Jobs Created', project.jobs_created?.toLocaleString() || 'N/A'],
+              ['TRL Level', trl ? `${project.trl_level} — ${trl.name}` : 'N/A'], ['Jobs Created', project.jobs_created?.toLocaleString() || 'N/A'],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between py-2 border-b border-gray-100 text-sm">
                 <span className="text-gray-500">{k}</span><span className="font-medium text-gray-900">{v}</span>
