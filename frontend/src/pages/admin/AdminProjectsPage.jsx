@@ -28,7 +28,9 @@ export default function AdminProjectsPage() {
         setProjects(list);
         setTotal(count);
         const s = { under_review: 0, approved: 0, archived: 0 };
-        list.forEach(p => { if (s[p.status] !== undefined) s[p.status]++; });
+        (r.status_counts || []).forEach(row => {
+          if (s[row.status] !== undefined) s[row.status] = parseInt(row.count);
+        });
         setStats(s);
       })
       .catch(()=>{}).finally(()=>setLoading(false));

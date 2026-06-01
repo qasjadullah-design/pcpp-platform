@@ -14,9 +14,9 @@ router.get('/dashboard', async (req, res) => {
       pool.query('SELECT COUNT(*) FROM projects'),
       pool.query("SELECT COUNT(*) FROM projects WHERE status = 'under_review'"),
       pool.query('SELECT COUNT(*) FROM users'),
-      pool.query("SELECT COALESCE(SUM(total_project_cost),0) AS total FROM projects WHERE status != 'draft'"),
+      pool.query("SELECT COALESCE(SUM(total_cost),0) AS total FROM projects WHERE status != 'draft'"),
       pool.query(`
-        SELECT p.id, p.title, p.primary_sector, p.status, p.total_project_cost, p.created_at,
+        SELECT p.id, p.title, p.primary_sector, p.status, p.total_cost, p.created_at,
                u.first_name || ' ' || u.last_name AS submitter
         FROM projects p LEFT JOIN users u ON p.user_id = u.id
         ORDER BY p.created_at DESC LIMIT 5
@@ -127,7 +127,7 @@ router.get('/projects', async (req, res) => {
     const [projects, count] = await Promise.all([
       pool.query(`
         SELECT p.id, p.project_code, p.title, p.primary_sector, p.district, p.status,
-               p.total_project_cost, p.trl_level, p.created_at, p.priority_level, p.risk_level,
+               p.total_cost, p.trl_level, p.created_at, p.priority_level, p.risk_level,
                u.first_name || ' ' || u.last_name AS owner_name, u.email AS owner_email
         FROM projects p LEFT JOIN users u ON p.user_id = u.id
         ${where} ORDER BY p.created_at DESC LIMIT $${idx} OFFSET $${idx + 1}
@@ -156,7 +156,7 @@ router.get('/projects/export', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT p.project_code, p.title, p.primary_sector, p.district, p.city, p.status,
-             p.total_project_cost, p.funding_gap, p.expected_roi, p.trl_level,
+             p.total_cost, p.funding_gap, p.expected_roi, p.trl_level,
              p.direct_beneficiaries, p.jobs_created, p.organization_name,
              p.created_at, u.email AS owner_email
       FROM projects p LEFT JOIN users u ON p.user_id = u.id
@@ -171,7 +171,7 @@ router.get('/projects/export', async (req, res) => {
       { header: 'Sector', key: 'primary_sector', width: 20 },
       { header: 'District', key: 'district', width: 20 },
       { header: 'Status', key: 'status', width: 15 },
-      { header: 'Total Cost (PKR)', key: 'total_project_cost', width: 20 },
+      { header: 'Total Cost (PKR)', key: 'total_cost', width: 20 },
       { header: 'Funding Gap (PKR)', key: 'funding_gap', width: 20 },
       { header: 'Expected ROI (%)', key: 'expected_roi', width: 15 },
       { header: 'TRL Level', key: 'trl_level', width: 12 },
