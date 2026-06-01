@@ -143,6 +143,7 @@ router.post('/', authenticate, async (req, res) => {
 
     const normalizedGrantAmount = grant_amount ?? grant ?? null;
     const normalizedMinInvestment = min_investment ?? minimum_investment ?? null;
+    const n = (v) => (v === '' || v === undefined ? null : v);
 
     const result = await client.query(`
       INSERT INTO projects (
@@ -158,16 +159,16 @@ router.post('/', authenticate, async (req, res) => {
 ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)
 RETURNING *
     `, [
-      title, abstract, description, primary_sector, sub_sectors,
-      trl_level, risk_level, priority_level,
-      duration_months, start_date, expected_completion,
-      district, city, address,
-      currency, total_project_cost, research_fund, equity_fund,
-      debt_loan, normalizedGrantAmount, funding_gap, normalizedMinInvestment, expected_roi, payback_years,
-      direct_beneficiaries, indirect_beneficiaries, jobs_created,
-      organization_name, organization_type, organization_website,
-      tags, req.user.id
-    ]);
+  title, abstract, description, primary_sector, sub_sectors,
+  n(trl_level), risk_level, priority_level,
+  n(duration_months), n(start_date), n(expected_completion),
+  district, city, address,
+  currency, n(total_project_cost), n(research_fund), n(equity_fund),
+  n(debt_loan), n(normalizedGrantAmount), n(funding_gap), n(normalizedMinInvestment), n(expected_roi), n(payback_years),
+  n(direct_beneficiaries), n(indirect_beneficiaries), n(jobs_created),
+  organization_name, organization_type, organization_website,
+  tags, req.user.id
+]);
 
     const project = result.rows[0];
     const projectId = project.id;
