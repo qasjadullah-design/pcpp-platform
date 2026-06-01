@@ -13,10 +13,10 @@ export default function AdminReviewPage() {
   const [feedback, setFeedback] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    projectsAPI.getAll({ status: 'under_review', limit: 20 })
-      .then(r => setProjects(r.data.projects || r.data || [])).catch(()=>{}).finally(()=>setLoading(false));
-  }, []);
+ useEffect(() => {
+  projectsAPI.getAll({ status: 'under_review', limit: 20 })
+    .then(r => setProjects(r.projects || [])).catch(()=>{}).finally(()=>setLoading(false));
+}, []);
 
   const handleReview = async () => {
     setSubmitting(true);
