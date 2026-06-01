@@ -18,7 +18,7 @@ router.get('/dashboard', async (req, res) => {
       pool.query(`
         SELECT p.id, p.title, p.primary_sector, p.status, p.total_project_cost, p.created_at,
                u.first_name || ' ' || u.last_name AS submitter
-        FROM projects p LEFT JOIN users u ON p.owner_id = u.id
+        FROM projects p LEFT JOIN users u ON p.user_id = u.id
         ORDER BY p.created_at DESC LIMIT 5
       `),
       pool.query(`
@@ -56,7 +56,7 @@ router.get('/pending', async (req, res) => {
     const { priority, sort = 'created_at' } = req.query;
     let query = `
       SELECT p.*, u.first_name || ' ' || u.last_name AS submitter_name, u.email AS submitter_email
-      FROM projects p LEFT JOIN users u ON p.owner_id = u.id
+      FROM projects p LEFT JOIN users u ON p.user_id = u.id
       WHERE p.status = 'under_review'
     `;
     const params = [];
@@ -81,7 +81,7 @@ router.put('/projects/:id/review', async (req, res) => {
 
     const result = await pool.query(`
       UPDATE projects SET status = $1, admin_notes = $2, updated_at = NOW()
-      WHERE id = $3 RETURNING *, (SELECT owner_id FROM projects WHERE id = $3) AS owner_id
+      WHERE id = $3 RETURNING *, (SELECT user_id FROM projects WHERE id = $3) AS user_id
     `, [validActions[action], notes, id]);
 
     if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' });
@@ -96,7 +96,7 @@ router.put('/projects/:id/review', async (req, res) => {
     await pool.query(`
       INSERT INTO notifications (user_id, title, message, type, link)
       VALUES ($1,$2,$3,$4,$5)
-    `, [result.rows[0].owner_id, messages[action].title, messages[action].msg, messages[action].type, '/dashboard/projects']);
+    `, [result.rows[0].user_id, messages[action].title, messages[action].msg, messages[action].type, '/dashboard/projects']);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -129,7 +129,7 @@ router.get('/projects', async (req, res) => {
         SELECT p.id, p.project_code, p.title, p.primary_sector, p.district, p.status,
                p.total_project_cost, p.trl_level, p.created_at, p.priority_level, p.risk_level,
                u.first_name || ' ' || u.last_name AS owner_name, u.email AS owner_email
-        FROM projects p LEFT JOIN users u ON p.owner_id = u.id
+        FROM projects p LEFT JOIN users u ON p.user_id = u.id
         ${where} ORDER BY p.created_at DESC LIMIT $${idx} OFFSET $${idx + 1}
       `, [...params, parseInt(limit), offset]),
       pool.query(`SELECT COUNT(*) FROM projects p ${where}`, params)
@@ -159,7 +159,7 @@ router.get('/projects/export', async (req, res) => {
              p.total_project_cost, p.funding_gap, p.expected_roi, p.trl_level,
              p.direct_beneficiaries, p.jobs_created, p.organization_name,
              p.created_at, u.email AS owner_email
-      FROM projects p LEFT JOIN users u ON p.owner_id = u.id
+      FROM projects p LEFT JOIN users u ON p.user_id = u.id
       ORDER BY p.created_at DESC
     `);
 
@@ -215,7 +215,7 @@ router.get('/users', async (req, res) => {
       pool.query(`
         SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.organization,
                u.role, u.status, u.created_at,
-               (SELECT COUNT(*) FROM projects WHERE owner_id = u.id) AS project_count
+               (SELECT COUNT(*) FROM projects WHERE user_id = u.id) AS project_count
         FROM users u ${where}
         ORDER BY u.created_at DESC LIMIT $${idx} OFFSET $${idx+1}
       `, [...params, parseInt(limit), offset]),
@@ -275,7 +275,7 @@ router.post('/projects', async (req, res) => {
   try {
     const { title, abstract, primary_sector, district, status = 'approved', ...rest } = req.body;
     const result = await pool.query(`
-      INSERT INTO projects (title, abstract, primary_sector, district, status, owner_id)
+      INSERT INTO projects (title, abstract, primary_sector, district, status, user_id)
       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
     `, [title, abstract, primary_sector, district, status, req.user.id]);
     res.status(201).json(result.rows[0]);
