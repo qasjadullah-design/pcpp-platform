@@ -62,6 +62,13 @@ export const TRL_LEVELS = [
 
 export const CURRENCIES = ['PKR','USD','EUR','GBP','CNY','AED','SAR','JPY'];
 
+// A3 — Carbon-market readiness
+export const CARBON_STANDARDS = ['Verra (VCS)','Gold Standard','CDM','Article 6.2','Article 6.4','Plan Vivo','Other','None'];
+export const CARBON_CREDIT_STATUS = ['Not started','Under validation','Validated','Registered','Issuing'];
+
+// A4 — Feasibility
+export const FEASIBILITY_STATUS = ['Not started','In progress','Completed'];
+
 export const STATUS_COLORS = {
   draft: 'gray', under_review: 'yellow', approved: 'green',
   rejected: 'red', changes_requested: 'orange',
