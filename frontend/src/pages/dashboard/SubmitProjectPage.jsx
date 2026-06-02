@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { SECTORS, DISTRICTS, SDG_GOALS, TRL_LEVELS, CURRENCIES } from '../../utils/constants';
+import { SECTORS, PROVINCES, DISTRICTS, SDG_GOALS, TRL_LEVELS, CURRENCIES } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
@@ -16,7 +16,7 @@ export default function SubmitProjectPage() {
     title:'', abstract:'', description:'',
     primary_sector:'', sub_sectors:[], sdg_goals:[],
     trl_level:'', status_level:'concept', risk_level:'medium', priority_level:'medium',
-    duration_months:'', start_date:'', expected_completion:'', district:'', city:'', address:'',
+    duration_months:'', start_date:'', expected_completion:'', province:'', district:'', city:'', address:'',
     currency:'PKR', total_cost:'', research_fund:'', equity_fund:'', debt_loan:'', grant_amount:'',
     funding_gap:'', min_investment:'', expected_roi:'', payback_years:'',
     direct_beneficiaries:'', indirect_beneficiaries:'', jobs_created:'',
@@ -123,8 +123,9 @@ export default function SubmitProjectPage() {
               <Input label="Start Date" type="date" value={form.start_date} onChange={e=>f('start_date',e.target.value)} />
               <Input label="Expected Completion" type="date" value={form.expected_completion} onChange={e=>f('expected_completion',e.target.value)} />
             </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">District *</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.district} onChange={e=>f('district',e.target.value)}><option value="">Select District</option>{DISTRICTS.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+            <div className="grid md:grid-cols-4 gap-4">
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Province *</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.province} onChange={e=>f('province',e.target.value)}><option value="">Select Province</option>{PROVINCES.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">District</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.district} onChange={e=>f('district',e.target.value)}><option value="">Select District</option>{DISTRICTS.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
               <Input label="City" placeholder="City name" value={form.city} onChange={e=>f('city',e.target.value)} />
               <Input label="Address" placeholder="Street address or location details" value={form.address} onChange={e=>f('address',e.target.value)} />
             </div>
@@ -190,6 +191,7 @@ export default function SubmitProjectPage() {
               <div className="grid md:grid-cols-2 gap-2 text-sm text-emerald-700">
                 <p>Title: {form.title || 'Not set'}</p>
                 <p>Sector: {form.primary_sector || 'Not set'}</p>
+                <p>Province: {form.province || 'Not set'}</p>
                 <p>District: {form.district || 'Not set'}</p>
                 <p>Total Cost: {form.total_cost ? `${form.currency} ${Number(form.total_cost).toLocaleString()}` : 'Not set'}</p>
                 <p>SDGs: {form.sdg_goals.length} selected</p>

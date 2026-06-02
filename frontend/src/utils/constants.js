@@ -1,3 +1,14 @@
+// Must match the projects.province ENUM in the DB exactly (values are validated server-side).
+export const PROVINCES = [
+  'Punjab',
+  'Sindh',
+  'Khyber Pakhtunkhwa',
+  'Balochistan',
+  'Gilgit-Baltistan',
+  'Azad Jammu and Kashmir',
+  'Islamabad Capital Territory',
+];
+
 export const DISTRICTS = [
   'Quetta','Gwadar','Turbat','Khuzdar','Kalat','Chaman','Zhob',
   'Loralai','Sibi','Dera Bugti','Bolan','Mastung','Panjgur','Washuk',

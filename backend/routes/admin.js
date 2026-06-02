@@ -12,7 +12,7 @@ router.get('/dashboard', async (req, res) => {
   try {
     const [
       total, pending, users, funding, recentProjects, recentActivity,
-      sectorStats, statusStats, trlStats, districtStats, topInvestors
+      sectorStats, statusStats, trlStats, districtStats, provinceStats, topInvestors
     ] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM projects'),
       pool.query("SELECT COUNT(*) FROM projects WHERE status = 'under_review'"),
@@ -54,6 +54,15 @@ router.get('/dashboard', async (req, res) => {
         FROM projects WHERE district IS NOT NULL
         GROUP BY district ORDER BY count DESC LIMIT 10
       `),
+      // By Province — clean dimension for the bulk-imported projects.
+      // NULLs (older pre-import projects) are bucketed as 'Unspecified' so the
+      // totals still sum to the full project count instead of being hidden.
+      pool.query(`
+        SELECT COALESCE(province, 'Unspecified') AS province,
+               COUNT(*) AS count, COALESCE(SUM(total_cost),0) AS total
+        FROM projects
+        GROUP BY COALESCE(province, 'Unspecified') ORDER BY count DESC
+      `),
       // Top Investors — interests.user_id is the real column (not investor_id)
       pool.query(`
         SELECT u.id, u.first_name, u.last_name, u.organization,
@@ -76,6 +85,7 @@ router.get('/dashboard', async (req, res) => {
       status_stats: statusStats.rows,
       trl_stats: trlStats.rows,
       district_stats: districtStats.rows,
+      province_stats: provinceStats.rows,
       top_investors: topInvestors.rows,
       top_sectors: sectorStats.rows
     });
