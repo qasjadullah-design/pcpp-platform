@@ -12,7 +12,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const result = await pool.query(
-      'SELECT id, first_name, last_name, email, role, status FROM users WHERE id = $1',
+      'SELECT id, first_name, last_name, email, role, status, province FROM users WHERE id = $1',
       [decoded.id]
     );
 
@@ -49,7 +49,7 @@ const optionalAuth = async (req, res, next) => {
     }
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await pool.query('SELECT id, first_name, last_name, email, role FROM users WHERE id = $1', [decoded.id]);
+    const result = await pool.query('SELECT id, first_name, last_name, email, role, province FROM users WHERE id = $1', [decoded.id]);
     req.user = result.rows[0] || null;
   } catch {
     req.user = null;

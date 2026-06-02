@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -10,6 +11,8 @@ const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','I
 
 export default function SubmitProjectPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isProvincial = user?.role === 'provincial';
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -29,6 +32,12 @@ export default function SubmitProjectPage() {
   });
 
   const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  // Provincial users can only file under their own province; lock it in the form.
+  // (The server also forces this on create, so this is UX only.)
+  useEffect(() => {
+    if (isProvincial && user?.province) setForm(p => ({ ...p, province: user.province }));
+  }, [isProvincial, user]);
 
   const handleSDG = (id) => {
     setForm(p => ({ ...p, sdg_goals: p.sdg_goals.includes(id) ? p.sdg_goals.filter(x=>x!==id) : [...p.sdg_goals, id] }));
@@ -147,7 +156,7 @@ export default function SubmitProjectPage() {
               <Input label="Expected Completion" type="date" value={form.expected_completion} onChange={e=>f('expected_completion',e.target.value)} />
             </div>
             <div className="grid md:grid-cols-4 gap-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Province *</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.province} onChange={e=>f('province',e.target.value)}><option value="">Select Province</option>{PROVINCES.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Province *</label><select disabled={isProvincial} title={isProvincial ? 'Locked to your province' : undefined} className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${isProvincial ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={form.province} onChange={e=>f('province',e.target.value)}><option value="">Select Province</option>{PROVINCES.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">District</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.district} onChange={e=>f('district',e.target.value)}><option value="">Select District</option>{DISTRICTS.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
               <Input label="City" placeholder="City name" value={form.city} onChange={e=>f('city',e.target.value)} />
               <Input label="Address" placeholder="Street address or location details" value={form.address} onChange={e=>f('address',e.target.value)} />
