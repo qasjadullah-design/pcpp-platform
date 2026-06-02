@@ -30,10 +30,11 @@ export default function ProjectsPage() {
     projectsAPI
       .getAll(params)
       .then((res) => {
-        const data = res.data || res;
-        setProjects(data);
-        setTotal(res.count || data.length);
-        setTotalPages(res.total_pages || 1);
+        // List endpoint returns { projects, total, page, pages } (already unwrapped by the interceptor).
+        const list = Array.isArray(res) ? res : (res?.projects || []);
+        setProjects(list);
+        setTotal(res?.total ?? list.length);
+        setTotalPages(res?.pages || 1);
       })
       .catch(() => {
         setError(true);

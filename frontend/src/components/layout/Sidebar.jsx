@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 const userLinks = [
   { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
   { to: '/projects', icon: '🔍', label: 'Browse Projects' },
-  { to: '/dashboard/projects/new', icon: '➕', label: 'Submit Project' },
+  { to: '/dashboard/submit', icon: '➕', label: 'Submit Project' },
   { to: '/dashboard/interests', icon: '❤️', label: 'My Interests' },
   { to: '/dashboard/projects', icon: '📁', label: 'My Projects' },
   { to: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
@@ -25,7 +25,7 @@ const adminLinks = [
 const provincialLinks = [
   { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
   { to: '/projects', icon: '🔍', label: 'Province Projects' },
-  { to: '/dashboard/projects/new', icon: '➕', label: 'Submit Project' },
+  { to: '/dashboard/submit', icon: '➕', label: 'Submit Project' },
   { to: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
 ];
 

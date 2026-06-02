@@ -19,6 +19,20 @@ A government-facing dashboard for the Ministry of Climate Change (MoCC) that con
 ### 1. The live backend is `backend/routes/*.js`, NOT `backend/src/`
 `server.js` loads `./routes/*` (raw `pg` / `pool.query`). There is a parallel **`backend/src/`** tree (Sequelize controllers, models, routes) that is **dead code** — it is not wired into the running server. It looks authoritative but isn't. **Always edit `backend/routes/*.js`.** When in doubt, trace from `server.js`'s `app.use(...)` lines. The duplicate `src/` tree should eventually be deleted to remove the trap.
 
+### 1b. The live FRONTEND has the same duplicate-file trap — `.js` wins over `.jsx`
+CRA resolves `import X from './X'` to **`.js` before `.jsx`**. The repo has duplicate pairs and the `.js` (or differently-pathed) version is the LIVE one; the other is dead and misleading:
+| Live (edit this) | Dead (ignore) |
+|---|---|
+| `src/App.js` | `src/App.jsx` |
+| `src/context/AuthContext.js` | `src/context/AuthContext.jsx` |
+| `src/pages/public/LoginPage.jsx`, `RegisterPage.jsx` | `src/pages/auth/*` |
+| `src/pages/dashboard/DashboardHome.jsx` (the `/dashboard` landing) | `src/pages/dashboard/DashboardPage.jsx` |
+| `src/components/layout/*` (DashboardLayout, Sidebar, PublicLayout) | `src/layouts/*` |
+**Always trace routing from `src/App.js`** (flat routes; `/dashboard/submit` is the submit path, not `/dashboard/projects/new`). Confirm a component is live by checking it's imported (transitively) from `App.js` before editing.
+
+### 1c. Frontend reads the UNWRAPPED response — `r`, not `r.data`
+Because of the axios interceptor (gotcha #3), API calls resolve to the response **body**. Many older live components wrongly do `r.data` / `res.data` (e.g. `setX(r.data)`), which yields `undefined`. This was masked because the backend routes were 500-ing and components fell back to mock data; once a route is fixed to return real data, the `r.data` bug surfaces as a blank/white screen (`.map`/`.length` on `undefined`). When fixing a route, also fix its consumer to read `r` / `r.projects` / `r.notifications` and guard arrays (`Array.isArray(r) ? r : r?.projects || []`).
+
 ### 2. Real DB column names differ from what old code assumed
 The codebase was written against an older schema. The live database uses these names — use them everywhere:
 

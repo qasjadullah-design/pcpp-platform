@@ -10,7 +10,7 @@ export default function MyProjectsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    projectsAPI.getMine().then(r => setProjects(r.data)).catch(()=>{}).finally(()=>setLoading(false));
+    projectsAPI.getMine().then(r => setProjects(Array.isArray(r) ? r : r?.projects || [])).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
 
   const handleDelete = async (id) => {

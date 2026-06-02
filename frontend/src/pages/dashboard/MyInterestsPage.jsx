@@ -8,7 +8,7 @@ export default function MyInterestsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    interestsAPI.getMine().then(r => setInterests(r.data)).catch(()=>{}).finally(()=>setLoading(false));
+    interestsAPI.getMine().then(r => setInterests(Array.isArray(r) ? r : r?.interests || [])).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
 
   return (

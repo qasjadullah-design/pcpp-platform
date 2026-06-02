@@ -66,7 +66,7 @@ export default function HomePage() {
 
     projectsAPI
       .getAll({ limit: 6 })
-      .then((res) => setProjects(res.data || res))
+      .then((res) => setProjects(Array.isArray(res) ? res : (res?.projects || [])))
       .catch(() => setProjects([]))
       .finally(() => setLoadingProjects(false));
   }, []);
