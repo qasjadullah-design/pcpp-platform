@@ -69,6 +69,30 @@ export const CARBON_CREDIT_STATUS = ['Not started','Under validation','Validated
 // A4 — Feasibility
 export const FEASIBILITY_STATUS = ['Not started','In progress','Completed'];
 
+// B3 — Water-Energy-Food nexus
+export const WEF_NEXUS = ['Water','Energy','Food'];
+
+// B4 — line ministry / sponsoring body
+export const LINE_MINISTRIES = [
+  'Ministry of Climate Change & Environmental Coordination',
+  'Ministry of Water Resources',
+  'Ministry of Energy (Power Division)',
+  'Ministry of Energy (Petroleum Division)',
+  'Ministry of National Food Security & Research',
+  'Ministry of Planning, Development & Special Initiatives',
+  'Ministry of Industries & Production',
+  'Ministry of Science & Technology',
+  'Ministry of National Health Services, Regulations & Coordination',
+  'Ministry of Federal Education & Professional Training',
+  'Ministry of Communications',
+  'Ministry of Maritime Affairs',
+  'Ministry of Housing & Works',
+  'Provincial Government Department',
+  'Other',
+];
+
+export const PARTNER_TYPES = ['Donor','Implementing','Technical','Financial','Government','Private Sector','Academic','Other'];
+
 export const STATUS_COLORS = {
   draft: 'gray', under_review: 'yellow', approved: 'green',
   rejected: 'red', changes_requested: 'orange',
