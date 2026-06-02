@@ -139,6 +139,7 @@ router.post('/', authenticate, async (req, res) => {
       direct_beneficiaries, indirect_beneficiaries, jobs_created,
       carbon_market_relevant, carbon_standard, carbon_methodology, carbon_credit_status,
       feasibility_status, feasibility_study_url, feasibility_notes, land_acquired,
+      wef_nexus, line_ministry, provincial_contacts, partners,
       organization_name, organization_type, organization_website,
       tags, shareholders, team, videos, future_plans, linked_projects
     } = req.body;
@@ -159,8 +160,9 @@ router.post('/', authenticate, async (req, res) => {
   organization_name, organization_type, organization_website,
   tags, user_id, province,
   carbon_market_relevant, carbon_standard, carbon_methodology, carbon_credit_status,
-  feasibility_status, feasibility_study_url, feasibility_notes, land_acquired
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41)
+  feasibility_status, feasibility_study_url, feasibility_notes, land_acquired,
+  wef_nexus, line_ministry, provincial_contacts, partners
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45)
 RETURNING *
     `, [
   title, abstract, description, primary_sector, sub_sectors,
@@ -173,7 +175,9 @@ RETURNING *
   organization_name, organization_type, organization_website,
   tags, req.user.id, n(province),
   carbon_market_relevant || false, n(carbon_standard), n(carbon_methodology), n(carbon_credit_status),
-  n(feasibility_status), n(feasibility_study_url), n(feasibility_notes), land_acquired || false
+  n(feasibility_status), n(feasibility_study_url), n(feasibility_notes), land_acquired || false,
+  wef_nexus && wef_nexus.length ? wef_nexus : null, n(line_ministry),
+  JSON.stringify(provincial_contacts || []), JSON.stringify(partners || [])
 ]);
 
     const project = result.rows[0];

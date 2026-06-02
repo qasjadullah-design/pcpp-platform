@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { SECTORS, PROVINCES, DISTRICTS, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS } from '../../utils/constants';
+import { SECTORS, PROVINCES, DISTRICTS, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
@@ -14,7 +14,7 @@ export default function SubmitProjectPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title:'', abstract:'', description:'',
-    primary_sector:'', sub_sectors:[], sdg_goals:[],
+    primary_sector:'', sub_sectors:[], sdg_goals:[], wef_nexus:[],
     trl_level:'', status_level:'concept', risk_level:'medium', priority_level:'medium',
     duration_months:'', start_date:'', expected_completion:'', province:'', district:'', city:'', address:'',
     currency:'PKR', total_cost:'', research_fund:'', equity_fund:'', debt_loan:'', grant_amount:'',
@@ -24,6 +24,7 @@ export default function SubmitProjectPage() {
     feasibility_status:'', feasibility_study_url:'', feasibility_notes:'', land_acquired:false,
     organization_name:'', organization_type:'', organization_website:'',
     project_lead:{ name:'', designation:'', email:'', phone:'' },
+    line_ministry:'', provincial_contacts:[], partners:[],
     tags:'',
   });
 
@@ -32,6 +33,15 @@ export default function SubmitProjectPage() {
   const handleSDG = (id) => {
     setForm(p => ({ ...p, sdg_goals: p.sdg_goals.includes(id) ? p.sdg_goals.filter(x=>x!==id) : [...p.sdg_goals, id] }));
   };
+
+  const toggleNexus = (val) => {
+    setForm(p => ({ ...p, wef_nexus: p.wef_nexus.includes(val) ? p.wef_nexus.filter(x=>x!==val) : [...p.wef_nexus, val] }));
+  };
+
+  // Generic repeatable-row helpers (provincial_contacts, partners)
+  const addRow = (key, blank) => setForm(p => ({ ...p, [key]: [...p[key], blank] }));
+  const updateRow = (key, idx, field, val) => setForm(p => ({ ...p, [key]: p[key].map((r,i)=> i===idx ? { ...r, [field]: val } : r) }));
+  const removeRow = (key, idx) => setForm(p => ({ ...p, [key]: p[key].filter((_,i)=> i!==idx) }));
 
   const handleSave = async (submit = false) => {
     setSaving(true);
@@ -93,6 +103,17 @@ export default function SubmitProjectPage() {
                 {SDG_GOALS.map(sdg => (
                   <button key={sdg.id} onClick={()=>handleSDG(sdg.id)} className={`p-3 rounded-xl text-white text-xs font-bold transition ${form.sdg_goals.includes(sdg.id)?'ring-4 ring-offset-1 ring-gray-300 opacity-100':'opacity-70 hover:opacity-90'}`} style={{backgroundColor: sdg.color}}>
                     {sdg.id}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">W</span> Water-Energy-Food Nexus</h3>
+              <p className="text-sm text-gray-500 mb-3">Select all nexus dimensions this project addresses</p>
+              <div className="flex gap-3 flex-wrap">
+                {WEF_NEXUS.map(nx => (
+                  <button key={nx} type="button" onClick={()=>toggleNexus(nx)} className={`px-5 py-2 border rounded-xl text-sm font-medium transition ${form.wef_nexus.includes(nx)?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
+                    {nx}
                   </button>
                 ))}
               </div>
@@ -205,6 +226,49 @@ export default function SubmitProjectPage() {
               <Input label="Email" type="email" value={form.project_lead.email} onChange={e=>f('project_lead',{...form.project_lead,email:e.target.value})} />
               <Input label="Phone" value={form.project_lead.phone} onChange={e=>f('project_lead',{...form.project_lead,phone:e.target.value})} />
             </div>
+
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">10</span> Line Ministry, Contacts & Partners</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Line Ministry / Sponsoring Body</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.line_ministry} onChange={e=>f('line_ministry',e.target.value)}><option value="">Select</option>{LINE_MINISTRIES.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium text-gray-800">Provincial Contacts</h3>
+                <button type="button" onClick={()=>addRow('provincial_contacts',{name:'',designation:'',department:'',email:'',phone:''})} className="text-sm text-emerald-600 hover:underline">+ Add contact</button>
+              </div>
+              {form.provincial_contacts.length===0 && <p className="text-sm text-gray-400">No contacts added.</p>}
+              {form.provincial_contacts.map((c,i)=>(
+                <div key={i} className="grid md:grid-cols-5 gap-2 mb-2">
+                  <Input placeholder="Name" value={c.name} onChange={e=>updateRow('provincial_contacts',i,'name',e.target.value)} />
+                  <Input placeholder="Designation" value={c.designation} onChange={e=>updateRow('provincial_contacts',i,'designation',e.target.value)} />
+                  <Input placeholder="Department" value={c.department} onChange={e=>updateRow('provincial_contacts',i,'department',e.target.value)} />
+                  <Input placeholder="Email" value={c.email} onChange={e=>updateRow('provincial_contacts',i,'email',e.target.value)} />
+                  <div className="flex gap-1 items-start">
+                    <Input placeholder="Phone" value={c.phone} onChange={e=>updateRow('provincial_contacts',i,'phone',e.target.value)} />
+                    <button type="button" onClick={()=>removeRow('provincial_contacts',i)} className="text-red-500 px-2 py-2.5">✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium text-gray-800">Partners</h3>
+                <button type="button" onClick={()=>addRow('partners',{name:'',type:'',role:''})} className="text-sm text-emerald-600 hover:underline">+ Add partner</button>
+              </div>
+              {form.partners.length===0 && <p className="text-sm text-gray-400">No partners added.</p>}
+              {form.partners.map((pt,i)=>(
+                <div key={i} className="grid md:grid-cols-3 gap-2 mb-2">
+                  <Input placeholder="Partner name" value={pt.name} onChange={e=>updateRow('partners',i,'name',e.target.value)} />
+                  <select value={pt.type} onChange={e=>updateRow('partners',i,'type',e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"><option value="">Type</option>{PARTNER_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                  <div className="flex gap-1 items-start">
+                    <Input placeholder="Role / contribution" value={pt.role} onChange={e=>updateRow('partners',i,'role',e.target.value)} />
+                    <button type="button" onClick={()=>removeRow('partners',i)} className="text-red-500 px-2 py-2.5">✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -224,6 +288,9 @@ export default function SubmitProjectPage() {
                 <p>TRL Level: {form.trl_level || 'Not set'}</p>
                 <p>Carbon Market: {form.carbon_market_relevant ? (form.carbon_standard || 'Relevant') : 'Not relevant'}</p>
                 <p>Feasibility: {form.feasibility_status || 'Not set'}</p>
+                <p>WEF Nexus: {form.wef_nexus.length ? form.wef_nexus.join(', ') : 'None'}</p>
+                <p>Line Ministry: {form.line_ministry || 'Not set'}</p>
+                <p>Partners: {form.partners.length} • Contacts: {form.provincial_contacts.length}</p>
               </div>
             </div>
           </div>

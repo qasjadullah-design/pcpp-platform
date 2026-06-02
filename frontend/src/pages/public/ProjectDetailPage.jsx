@@ -153,6 +153,40 @@ export default function ProjectDetailPage() {
                   {project.feasibility_notes && <p className="text-sm text-gray-600 mt-2 leading-relaxed">{project.feasibility_notes}</p>}
                 </div>
               )}
+              {project.wef_nexus?.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h2 className="font-semibold text-gray-900 mb-3">💧 Water-Energy-Food Nexus</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {project.wef_nexus.map(nx => <span key={nx} className="px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 text-xs font-medium">{nx}</span>)}
+                  </div>
+                </div>
+              )}
+              {(project.line_ministry || project.partners?.length > 0 || project.provincial_contacts?.length > 0) && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h2 className="font-semibold text-gray-900 mb-3">🏛️ Ownership & Partners</h2>
+                  {project.line_ministry && <p className="text-sm mb-3"><span className="text-gray-500">Line Ministry: </span><span className="font-medium text-gray-900">{project.line_ministry}</span></p>}
+                  {project.provincial_contacts?.length > 0 && (
+                    <div className="mb-3">
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Provincial Contacts</h3>
+                      <div className="space-y-1">
+                        {project.provincial_contacts.map((c, i) => (
+                          <p key={i} className="text-sm text-gray-600">{c.name}{c.designation ? `, ${c.designation}` : ''}{c.department ? ` — ${c.department}` : ''}{c.email ? ` · ${c.email}` : ''}{c.phone ? ` · ${c.phone}` : ''}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {project.partners?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Partners</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {project.partners.map((pt, i) => (
+                          <span key={i} className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">{pt.name}{pt.type ? ` (${pt.type})` : ''}{pt.role ? ` — ${pt.role}` : ''}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
