@@ -41,6 +41,7 @@ export default function AdminDashboard() {
 
   const maxSector = Math.max(1, ...((data?.sector_stats || []).map(s => Number(s.count) || 0)));
   const maxTrl = Math.max(1, ...((data?.trl_stats || []).map(t => Number(t.count) || 0)));
+  const maxProvince = Math.max(1, ...((data?.province_stats || []).map(p => Number(p.count) || 0)));
   const lifecycle = buildLifecycle(data?.status_stats);
   const lifecyclePct = (v) => (lifecycle.total ? Math.round((v / lifecycle.total) * 100) : 0);
   const lifecycleData = {
@@ -160,6 +161,25 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <p className="text-sm text-gray-400">No status data available.</p>
+        )}
+      </div>
+
+      {/* By Province */}
+      <div className="bg-white border rounded-2xl p-5 mb-6">
+        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">🗺️ By Province</h3>
+        {data?.province_stats?.length ? (
+          data.province_stats.map(p => (
+            <div key={p.province} className="flex items-center justify-between py-1.5 text-sm">
+              <span className="text-gray-700 w-44 truncate">{p.province}</span>
+              <div className="flex items-center gap-2 flex-1">
+                <div className="flex-1 h-2 bg-gray-100 rounded-full"><div className="h-2 bg-indigo-500 rounded-full" style={{width:`${Math.min(100,(p.count/maxProvince)*100)}%`}}/></div>
+                <span className="text-gray-900 font-medium w-10 text-right">{p.count}</span>
+                <span className="text-gray-400 w-20 text-right">{p.total ? `Rs. ${(Number(p.total)/1e9).toFixed(1)}B` : '—'}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-sm text-gray-400">No province data available.</p>
         )}
       </div>
 

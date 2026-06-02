@@ -133,7 +133,7 @@ router.post('/', authenticate, async (req, res) => {
       title, abstract, description, primary_sector, sub_sectors,
       sdg_goals, trl_level, risk_level, priority_level,
       duration_months, start_date, expected_completion,
-      district, city, address,
+      province, district, city, address,
       currency, total_project_cost, research_fund, equity_fund,
       debt_loan, grant_amount, grant, funding_gap, min_investment, minimum_investment, expected_roi, payback_years,
       direct_beneficiaries, indirect_beneficiaries, jobs_created,
@@ -155,8 +155,8 @@ router.post('/', authenticate, async (req, res) => {
   debt_loan, grant_amount, funding_gap, minimum_investment, expected_roi, payback_years,
   direct_beneficiaries, indirect_beneficiaries, jobs_created,
   organization_name, organization_type, organization_website,
-  tags, user_id
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)
+  tags, user_id, province
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33)
 RETURNING *
     `, [
   title, abstract, description, primary_sector, sub_sectors,
@@ -167,7 +167,7 @@ RETURNING *
   n(debt_loan), n(normalizedGrantAmount), n(funding_gap), n(normalizedMinInvestment), n(expected_roi), n(payback_years),
   n(direct_beneficiaries), n(indirect_beneficiaries), n(jobs_created),
   organization_name, organization_type, organization_website,
-  tags, req.user.id
+  tags, req.user.id, n(province)
 ]);
 
     const project = result.rows[0];
