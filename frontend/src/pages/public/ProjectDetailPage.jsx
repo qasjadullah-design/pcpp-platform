@@ -124,6 +124,35 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
               )}
+              {project.carbon_market_relevant && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h2 className="font-semibold text-gray-900 mb-3">🌱 Carbon-Market Readiness</h2>
+                  <div className="grid md:grid-cols-2 gap-x-6 text-sm">
+                    {[
+                      ['Standard', project.carbon_standard],
+                      ['Methodology', project.carbon_methodology],
+                      ['Credit Status', project.carbon_credit_status],
+                    ].filter(([, v]) => v).map(([k, v]) => (
+                      <div key={k} className="flex justify-between py-1.5 border-b border-gray-100"><span className="text-gray-500">{k}</span><span className="font-medium text-gray-900">{v}</span></div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(project.feasibility_status || project.feasibility_notes || project.feasibility_study_url || project.land_acquired) && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h2 className="font-semibold text-gray-900 mb-3">📋 Feasibility</h2>
+                  <div className="grid md:grid-cols-2 gap-x-6 text-sm mb-3">
+                    {[
+                      ['Study Status', project.feasibility_status],
+                      ['Land Acquired', project.land_acquired ? 'Yes' : null],
+                    ].filter(([, v]) => v).map(([k, v]) => (
+                      <div key={k} className="flex justify-between py-1.5 border-b border-gray-100"><span className="text-gray-500">{k}</span><span className="font-medium text-gray-900">{v}</span></div>
+                    ))}
+                  </div>
+                  {project.feasibility_study_url && <a href={project.feasibility_study_url} target="_blank" rel="noreferrer" className="text-sm text-emerald-600 hover:underline">View feasibility study →</a>}
+                  {project.feasibility_notes && <p className="text-sm text-gray-600 mt-2 leading-relaxed">{project.feasibility_notes}</p>}
+                </div>
+              )}
             </div>
           )}
 

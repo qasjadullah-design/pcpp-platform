@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { SECTORS, PROVINCES, DISTRICTS, SDG_GOALS, TRL_LEVELS, CURRENCIES } from '../../utils/constants';
+import { SECTORS, PROVINCES, DISTRICTS, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
@@ -20,6 +20,8 @@ export default function SubmitProjectPage() {
     currency:'PKR', total_cost:'', research_fund:'', equity_fund:'', debt_loan:'', grant_amount:'',
     funding_gap:'', min_investment:'', expected_roi:'', payback_years:'',
     direct_beneficiaries:'', indirect_beneficiaries:'', jobs_created:'',
+    carbon_market_relevant:false, carbon_standard:'', carbon_methodology:'', carbon_credit_status:'',
+    feasibility_status:'', feasibility_study_url:'', feasibility_notes:'', land_acquired:false,
     organization_name:'', organization_type:'', organization_website:'',
     project_lead:{ name:'', designation:'', email:'', phone:'' },
     tags:'',
@@ -129,6 +131,30 @@ export default function SubmitProjectPage() {
               <Input label="City" placeholder="City name" value={form.city} onChange={e=>f('city',e.target.value)} />
               <Input label="Address" placeholder="Street address or location details" value={form.address} onChange={e=>f('address',e.target.value)} />
             </div>
+
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">6</span> Carbon-Market Readiness</h2>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={form.carbon_market_relevant} onChange={e=>f('carbon_market_relevant',e.target.checked)} className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+              This project is relevant to carbon markets
+            </label>
+            {form.carbon_market_relevant && (
+              <div className="grid md:grid-cols-3 gap-4">
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Carbon Standard</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.carbon_standard} onChange={e=>f('carbon_standard',e.target.value)}><option value="">Select Standard</option>{CARBON_STANDARDS.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+                <Input label="Methodology" placeholder="e.g. VM0007, ACM0002" value={form.carbon_methodology} onChange={e=>f('carbon_methodology',e.target.value)} />
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Credit Status</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.carbon_credit_status} onChange={e=>f('carbon_credit_status',e.target.value)}><option value="">Select Status</option>{CARBON_CREDIT_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+              </div>
+            )}
+
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">7</span> Feasibility</h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Feasibility Study</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.feasibility_status} onChange={e=>f('feasibility_status',e.target.value)}><option value="">Select Status</option>{FEASIBILITY_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+              <Input label="Study Link (URL)" placeholder="https://..." value={form.feasibility_study_url} onChange={e=>f('feasibility_study_url',e.target.value)} />
+              <label className="flex items-center gap-2 text-sm text-gray-700 mt-7">
+                <input type="checkbox" checked={form.land_acquired} onChange={e=>f('land_acquired',e.target.checked)} className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                Land acquired
+              </label>
+            </div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Feasibility Notes / Key Findings</label><textarea rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Summary of feasibility findings..." value={form.feasibility_notes} onChange={e=>f('feasibility_notes',e.target.value)}/></div>
           </div>
         )}
 
@@ -196,6 +222,8 @@ export default function SubmitProjectPage() {
                 <p>Total Cost: {form.total_cost ? `${form.currency} ${Number(form.total_cost).toLocaleString()}` : 'Not set'}</p>
                 <p>SDGs: {form.sdg_goals.length} selected</p>
                 <p>TRL Level: {form.trl_level || 'Not set'}</p>
+                <p>Carbon Market: {form.carbon_market_relevant ? (form.carbon_standard || 'Relevant') : 'Not relevant'}</p>
+                <p>Feasibility: {form.feasibility_status || 'Not set'}</p>
               </div>
             </div>
           </div>
