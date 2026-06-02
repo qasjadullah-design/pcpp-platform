@@ -15,13 +15,28 @@ router.get('/', optionalAuth, async (req, res) => {
     const params = [];
     let idx = 1;
 
-    // Public sees only approved; admin/owner sees all
-    if (!req.user || !['admin', 'superadmin'].includes(req.user.role)) {
+    // Access scoping:
+    //  - admin/superadmin: all projects (optional status filter)
+    //  - provincial: only their own province, all statuses (optional status filter)
+    //  - everyone else (incl. public): approved only
+    const isAdmin = ['admin', 'superadmin'].includes(req.user?.role);
+    const isProvincial = req.user?.role === 'provincial';
+
+    if (isProvincial) {
+      conditions.push(`p.province = $${idx++}`);
+      params.push(req.user.province);
+      if (req.query.status && req.query.status !== 'all') {
+        conditions.push(`p.status = $${idx++}`);
+        params.push(req.query.status);
+      }
+    } else if (isAdmin) {
+      if (status !== 'all') {
+        conditions.push(`p.status = $${idx++}`);
+        params.push(status);
+      }
+    } else {
       conditions.push(`p.status = $${idx++}`);
       params.push('approved');
-    } else if (status !== 'all') {
-      conditions.push(`p.status = $${idx++}`);
-      params.push(status);
     }
 
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
@@ -34,20 +49,20 @@ router.get('/', optionalAuth, async (req, res) => {
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    const validSorts = ['created_at', 'title', 'total_project_cost', 'expected_roi'];
+    const validSorts = ['created_at', 'title', 'total_cost', 'expected_roi'];
     const sortCol = validSorts.includes(sort) ? sort : 'created_at';
     const sortOrder = order === 'ASC' ? 'ASC' : 'DESC';
 
     const [projectsResult, countResult] = await Promise.all([
       pool.query(`
-        SELECT p.id, p.project_code, p.title, p.abstract, p.primary_sector, p.district, p.city,
-               p.status, p.trl_level, p.currency, p.total_project_cost, p.funding_gap,
+        SELECT p.id, p.project_code, p.title, p.abstract, p.primary_sector, p.province, p.district, p.city,
+               p.status, p.trl_level, p.currency, p.total_cost, p.funding_gap,
                p.expected_roi, p.payback_years, p.direct_beneficiaries, p.jobs_created,
                p.organization_name, p.tags, p.progress_percent, p.infographic_url,
                p.created_at, p.risk_level, p.priority_level,
                u.first_name || ' ' || u.last_name AS owner_name
         FROM projects p
-        LEFT JOIN users u ON p.owner_id = u.id
+        LEFT JOIN users u ON p.user_id = u.id
         ${where}
         ORDER BY p.${sortCol} ${sortOrder}
         LIMIT $${idx} OFFSET $${idx + 1}
@@ -74,13 +89,19 @@ router.get('/:id', optionalAuth, async (req, res) => {
     const result = await pool.query(`
       SELECT p.*, u.first_name || ' ' || u.last_name AS owner_name, u.email AS owner_email
       FROM projects p
-      LEFT JOIN users u ON p.owner_id = u.id
+      LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = $1
     `, [id]);
 
     if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' });
 
     const project = result.rows[0];
+
+    // Provincial users may only open non-approved projects within their own province.
+    // (Approved projects remain publicly viewable for everyone.)
+    if (req.user?.role === 'provincial' && project.status !== 'approved' && project.province !== req.user.province) {
+      return res.status(403).json({ error: 'Forbidden: project is outside your province' });
+    }
 
     // Fetch related data
     const [sdgs, team, docs, videos, updates, shareholders, futurePlans, linkedProjects] = await Promise.all([
@@ -148,6 +169,9 @@ router.post('/', authenticate, async (req, res) => {
     const normalizedMinInvestment = min_investment ?? minimum_investment ?? null;
     const n = (v) => (v === '' || v === undefined ? null : v);
 
+    // Provincial users can only file under their own province; ignore any body value.
+    const effectiveProvince = req.user.role === 'provincial' ? req.user.province : province;
+
     const result = await client.query(`
       INSERT INTO projects (
   title, abstract, description, primary_sector, sub_sectors,
@@ -173,7 +197,7 @@ RETURNING *
   n(debt_loan), n(normalizedGrantAmount), n(funding_gap), n(normalizedMinInvestment), n(expected_roi), n(payback_years),
   n(direct_beneficiaries), n(indirect_beneficiaries), n(jobs_created),
   organization_name, organization_type, organization_website,
-  tags, req.user.id, n(province),
+  tags, req.user.id, n(effectiveProvince),
   carbon_market_relevant || false, n(carbon_standard), n(carbon_methodology), n(carbon_credit_status),
   n(feasibility_status), n(feasibility_study_url), n(feasibility_notes), land_acquired || false,
   wef_nexus && wef_nexus.length ? wef_nexus : null, n(line_ministry),
@@ -255,13 +279,23 @@ router.put('/:id', authenticate, async (req, res) => {
     const project = await pool.query('SELECT * FROM projects WHERE id = $1', [id]);
     if (!project.rows[0]) return res.status(404).json({ error: 'Project not found' });
 
-    const isOwner = project.rows[0].owner_id === req.user.id;
+    const proj = project.rows[0];
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
-    if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    const isProvincial = req.user.role === 'provincial';
+    if (isProvincial) {
+      // Provincial users may edit any project within their own province.
+      if (proj.province !== req.user.province) {
+        return res.status(403).json({ error: 'Forbidden: project is outside your province' });
+      }
+    } else if (!isAdmin && proj.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
+    // Note: province is intentionally NOT editable here, so a provincial user
+    // cannot move a project into another region.
     const allowedFields = [
       'title', 'abstract', 'description', 'primary_sector', 'trl_level',
-      'district', 'city', 'currency', 'total_project_cost', 'funding_gap',
+      'district', 'city', 'currency', 'total_cost', 'funding_gap',
       'expected_roi', 'organization_name', 'tags', 'risk_level', 'priority_level'
     ];
 
@@ -295,12 +329,17 @@ router.put('/:id', authenticate, async (req, res) => {
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT owner_id FROM projects WHERE id = $1', [id]);
+    const result = await pool.query('SELECT user_id, province FROM projects WHERE id = $1', [id]);
     if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' });
 
-    const isOwner = result.rows[0].owner_id === req.user.id;
+    const proj = result.rows[0];
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
-    if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    const isProvincial = req.user.role === 'provincial';
+    if (isProvincial) {
+      if (proj.province !== req.user.province) return res.status(403).json({ error: 'Forbidden: project is outside your province' });
+    } else if (!isAdmin && proj.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
     await pool.query('DELETE FROM projects WHERE id = $1', [id]);
     res.json({ message: 'Project deleted successfully' });

@@ -20,10 +20,19 @@ const adminLinks = [
   { to: '/admin/settings', icon: '⚙️', label: 'Settings' },
 ];
 
+// Provincial users: their (province-scoped) project list, submit, and their own submissions.
+// No approval queue, no user management.
+const provincialLinks = [
+  { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
+  { to: '/projects', icon: '🔍', label: 'Province Projects' },
+  { to: '/dashboard/submit', icon: '➕', label: 'Submit Project' },
+  { to: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
+];
+
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const links = user?.role === 'admin' ? adminLinks : userLinks;
+  const links = user?.role === 'admin' ? adminLinks : user?.role === 'provincial' ? provincialLinks : userLinks;
   return (
     <aside className="w-64 min-h-screen bg-gray-900 text-white flex flex-col">
       <div className="p-6 border-b border-gray-700">
@@ -31,7 +40,7 @@ export default function Sidebar() {
           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">PC</div>
           <div>
             <div className="text-sm font-bold">PCPP</div>
-            <div className="text-xs text-gray-400">{user?.role === 'admin' ? 'Admin Panel' : 'User Portal'}</div>
+            <div className="text-xs text-gray-400">{user?.role === 'admin' ? 'Admin Panel' : user?.role === 'provincial' ? `${user?.province || 'Provincial'} Portal` : 'User Portal'}</div>
           </div>
         </div>
       </div>

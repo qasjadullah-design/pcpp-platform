@@ -71,7 +71,8 @@ router.post('/login', [
     }
 
     const token = generateToken(user);
-    const { password_hash, reset_token, reset_token_expires, ...safeUser } = user;
+    // Strip both the legacy `password` column and `password_hash` so the hash is never returned.
+    const { password, password_hash, reset_token, reset_token_expires, ...safeUser } = user;
 
     res.json({ token, user: safeUser });
   } catch (err) {
@@ -139,7 +140,7 @@ router.post('/reset-password', [
 router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, first_name, last_name, email, phone, organization, role, status, avatar_url, created_at FROM users WHERE id = $1',
+      'SELECT id, first_name, last_name, email, phone, organization, role, status, province, avatar_url, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json(result.rows[0]);
