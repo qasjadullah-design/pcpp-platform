@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    usersAPI.getDashboard().then(r => setData(r.data)).catch(() => {}).finally(() => setLoading(false));
+    usersAPI.getDashboard().then(r => setData(r)).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="animate-pulse space-y-4"><div className="h-32 bg-gray-200 rounded-xl"/><div className="grid grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-gray-200 rounded-xl"/>)}</div></div>;
@@ -76,11 +76,11 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-gray-900">My Recent Interests</h3>
             <Link to="/dashboard/interests" className="text-sm text-green-600 hover:underline">View All →</Link>
           </div>
-          {data?.recent_interests?.length === 0 ? (
+          {!data?.recent_interests?.length ? (
             <p className="text-gray-400 text-sm text-center py-4">No interests yet</p>
           ) : (
             <div className="space-y-3">
-              {data?.recent_interests?.map(i => (
+              {data.recent_interests.map(i => (
                 <div key={i.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-sm">🏗️</div>
@@ -104,14 +104,14 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-gray-900">My Projects</h3>
             <Link to="/dashboard/projects" className="text-sm text-green-600 hover:underline">View All →</Link>
           </div>
-          {data?.my_projects?.length === 0 ? (
+          {!data?.my_projects?.length ? (
             <div className="text-center py-4">
               <p className="text-gray-400 text-sm mb-3">No projects yet</p>
               <Link to="/dashboard/projects/new" className="text-sm bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">Submit First Project</Link>
             </div>
           ) : (
             <div className="space-y-3">
-              {data?.my_projects?.slice(0, 4).map(p => {
+              {data.my_projects.slice(0, 4).map(p => {
                 const status = PROJECT_STATUSES[p.status] || PROJECT_STATUSES.draft;
                 return (
                   <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
