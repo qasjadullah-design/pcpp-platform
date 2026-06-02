@@ -71,8 +71,13 @@ router.post('/login', [
     }
 
     const token = generateToken(user);
-    // Strip both the legacy `password` column and `password_hash` so the hash is never returned.
-    const { password, password_hash, reset_token, reset_token_expires, ...safeUser } = user;
+    // Strip secrets before returning (avoid re-declaring `password`, which is the
+    // login input above and would shadow it in this block / trigger a TDZ error).
+    const safeUser = { ...user };
+    delete safeUser.password;
+    delete safeUser.password_hash;
+    delete safeUser.reset_token;
+    delete safeUser.reset_token_expires;
 
     res.json({ token, user: safeUser });
   } catch (err) {
