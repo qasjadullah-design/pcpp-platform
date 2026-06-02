@@ -40,20 +40,20 @@ router.put('/password', authenticate, async (req, res) => {
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
     const [myProjects, myInterests, savedProjects, interests_received] = await Promise.all([
-      pool.query('SELECT id, title, status, primary_sector, progress_percent, created_at FROM projects WHERE owner_id = $1 ORDER BY created_at DESC', [req.user.id]),
+      pool.query('SELECT id, title, status, primary_sector, progress_percent, created_at FROM projects WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]),
       pool.query(`
         SELECT i.*, p.title AS project_title, p.primary_sector, p.district
         FROM interests i JOIN projects p ON i.project_id = p.id
-        WHERE i.investor_id = $1 ORDER BY i.created_at DESC LIMIT 5
+        WHERE i.user_id = $1 ORDER BY i.created_at DESC LIMIT 5
       `, [req.user.id]),
       pool.query(`
-        SELECT p.id, p.title, p.primary_sector, p.district, p.status, p.total_project_cost
+        SELECT p.id, p.title, p.primary_sector, p.district, p.status, p.total_cost
         FROM saved_projects sp JOIN projects p ON sp.project_id = p.id
         WHERE sp.user_id = $1 ORDER BY sp.created_at DESC
       `, [req.user.id]),
       pool.query(`
         SELECT COUNT(*) FROM interests i
-        JOIN projects p ON i.project_id = p.id WHERE p.owner_id = $1
+        JOIN projects p ON i.project_id = p.id WHERE p.user_id = $1
       `, [req.user.id])
     ]);
 

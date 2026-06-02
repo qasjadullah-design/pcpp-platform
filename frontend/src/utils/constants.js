@@ -101,3 +101,23 @@ export const STATUS_COLORS = {
 };
 
 export const UPDATE_TYPES = ['milestone','progress','funding','construction','team','issue','announcement','general'];
+
+// Status label + badge color classes, keyed by the DB status value.
+export const PROJECT_STATUSES = {
+  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-700' },
+  under_review: { label: 'Under Review', color: 'bg-yellow-100 text-yellow-700' },
+  approved: { label: 'Approved', color: 'bg-green-100 text-green-700' },
+  rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700' },
+  changes_requested: { label: 'Changes Requested', color: 'bg-orange-100 text-orange-700' },
+  under_implementation: { label: 'Under Implementation', color: 'bg-blue-100 text-blue-700' },
+  completed: { label: 'Completed', color: 'bg-purple-100 text-purple-700' },
+  archived: { label: 'Archived', color: 'bg-gray-100 text-gray-500' },
+};
+
+export const formatCurrency = (value, currency = 'PKR') => {
+  const num = Number(value);
+  if (!value || Number.isNaN(num)) return 'N/A';
+  if (Math.abs(num) >= 1e9) return `${currency} ${(num / 1e9).toFixed(1)}B`;
+  if (Math.abs(num) >= 1e6) return `${currency} ${(num / 1e6).toFixed(1)}M`;
+  return `${currency} ${num.toLocaleString()}`;
+};

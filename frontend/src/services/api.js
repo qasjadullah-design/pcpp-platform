@@ -63,6 +63,12 @@ export const adminAPI = {
   updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { status }),
 };
 
+export const usersAPI = {
+  getDashboard: () => api.get('/users/dashboard'),
+  updateProfile: (data) => api.put('/users/profile', data),
+  changePassword: (data) => api.put('/users/password', data),
+};
+
 export const notificationsAPI = {
   getAll: () => api.get('/notifications'),
   markRead: (id) => api.put(`/notifications/${id}/read`),
