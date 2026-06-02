@@ -82,6 +82,22 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+// GET the current user's own submitted projects.
+// Must be declared BEFORE '/:id' or '/my' is captured as an :id and fails the UUID cast.
+router.get('/my', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, title, status, primary_sector, province, district, total_cost, created_at
+       FROM projects WHERE user_id = $1 ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch your projects' });
+  }
+});
+
 // GET single project
 router.get('/:id', optionalAuth, async (req, res) => {
   try {

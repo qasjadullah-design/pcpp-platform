@@ -27,7 +27,7 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     projectsAPI
       .getOne(id)
-      .then((r) => setProject(r.data))
+      .then((r) => setProject(r?.data || r))
       .catch(() => {
         const fallback = MOCK_FEATURED_PROJECTS.find((p) => p.id === id);
         if (fallback) setProject(fallback);

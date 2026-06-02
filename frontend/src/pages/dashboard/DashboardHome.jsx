@@ -12,12 +12,14 @@ export default function DashboardHome() {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    projectsAPI.getMine().then(r => setMyProjects(r.data)).catch(()=>{});
-    interestsAPI.getMine().then(r => setMyInterests(r.data)).catch(()=>{});
-    notificationsAPI.getAll().then(r => setNotifications(r.data)).catch(()=>{});
+    // The axios interceptor already unwraps response.data, so `r` IS the body.
+    // /projects/my and /interests/my return arrays; /notifications returns { notifications }.
+    projectsAPI.getMine().then(r => setMyProjects(Array.isArray(r) ? r : r?.projects || [])).catch(()=>{});
+    interestsAPI.getMine().then(r => setMyInterests(Array.isArray(r) ? r : r?.interests || [])).catch(()=>{});
+    notificationsAPI.getAll().then(r => setNotifications(Array.isArray(r) ? r : r?.notifications || [])).catch(()=>{});
   }, []);
 
-  const unread = notifications.filter(n => !n.is_read).length;
+  const unread = (notifications || []).filter(n => !n.is_read).length;
 
   return (
     <div className="p-8">
