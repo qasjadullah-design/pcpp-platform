@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { BarChart3, CircleDollarSign, FolderOpen, RefreshCw, Wallet } from 'lucide-react';
+import { BarChart3, CircleDollarSign, Download, FolderOpen, RefreshCw, Wallet } from 'lucide-react';
 import { analyticsAPI } from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { formatCurrency } from '../../utils/constants';
@@ -29,6 +29,25 @@ const lifecycleColors = {
 const wefColor = (sector) => WEF_COLORS[sector] || WEF_COLORS.Other;
 
 const emptyChart = (rows) => !rows || rows.length === 0 || rows.every((row) => Number(row.count || row.investment || 0) === 0);
+
+const sectorBucket = (project) => {
+  const sector = (project.primary_sector || '').toLowerCase();
+  if (sector.includes('water')) return 'Water';
+  if (sector.includes('energy') || sector.includes('power')) return 'Energy';
+  if (sector.includes('food') || sector.includes('agri')) return 'Food';
+  return 'Other';
+};
+
+const lifecycleBucket = (project) => {
+  if (project.status === 'under_implementation') return 'Ongoing';
+  if (project.status === 'completed') return 'Completed';
+  return 'Pipeline';
+};
+
+const csvCell = (value) => {
+  const text = value === null || value === undefined ? '' : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+};
 
 const parsedValue = (ctx) => {
   if (typeof ctx.parsed === 'number') return ctx.parsed;
@@ -87,6 +106,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState(null);
+  const [tableFilters, setTableFilters] = useState({ sector: '', lifecycle: '', trl: '', province: '' });
 
   useEffect(() => {
     analyticsAPI.getOverview()
@@ -106,26 +126,56 @@ export default function AnalyticsPage() {
   const provinceRows = data?.by_province || [];
   const projectRows = data?.projects || [];
 
+  const filterOptions = useMemo(() => ({
+    sectors: Array.from(new Set(projectRows.map(sectorBucket))).sort(),
+    lifecycles: lifecycleOrder,
+    trls: Array.from(new Set(projectRows.map((project) => project.trl_level).filter(Boolean))).sort((a, b) => Number(a) - Number(b)),
+    provinces: Array.from(new Set(projectRows.map((project) => project.province || 'Unspecified'))).sort(),
+  }), [projectRows]);
+
   const filteredProjects = useMemo(() => {
-    if (!activeFilter) return projectRows;
     return projectRows.filter((project) => {
-      if (activeFilter.type === 'sector') {
-        const sector = (project.primary_sector || '').toLowerCase();
-        if (activeFilter.value === 'Water') return sector.includes('water');
-        if (activeFilter.value === 'Energy') return sector.includes('energy') || sector.includes('power');
-        if (activeFilter.value === 'Food') return sector.includes('food') || sector.includes('agri');
-        return !sector.includes('water') && !sector.includes('energy') && !sector.includes('power') && !sector.includes('food') && !sector.includes('agri');
+      if (activeFilter?.type === 'sector') {
+        if (sectorBucket(project) !== activeFilter.value) return false;
       }
-      if (activeFilter.type === 'lifecycle') {
-        if (activeFilter.value === 'Ongoing') return project.status === 'under_implementation';
-        if (activeFilter.value === 'Completed') return project.status === 'completed';
-        return project.status !== 'under_implementation' && project.status !== 'completed';
+      if (activeFilter?.type === 'lifecycle') {
+        if (lifecycleBucket(project) !== activeFilter.value) return false;
       }
-      if (activeFilter.type === 'province') return (project.province || 'Unspecified') === activeFilter.value;
-      if (activeFilter.type === 'trl') return Number(project.trl_level) === Number(activeFilter.value);
+      if (activeFilter?.type === 'province' && (project.province || 'Unspecified') !== activeFilter.value) return false;
+      if (activeFilter?.type === 'trl' && Number(project.trl_level) !== Number(activeFilter.value)) return false;
+      if (tableFilters.sector && sectorBucket(project) !== tableFilters.sector) return false;
+      if (tableFilters.lifecycle && lifecycleBucket(project) !== tableFilters.lifecycle) return false;
+      if (tableFilters.trl && Number(project.trl_level) !== Number(tableFilters.trl)) return false;
+      if (tableFilters.province && (project.province || 'Unspecified') !== tableFilters.province) return false;
       return true;
     });
-  }, [activeFilter, projectRows]);
+  }, [activeFilter, projectRows, tableFilters]);
+
+  const clearFilters = () => {
+    setActiveFilter(null);
+    setTableFilters({ sector: '', lifecycle: '', trl: '', province: '' });
+  };
+
+  const handleExport = () => {
+    const headers = ['Project', !isProvince && 'Province', 'Sector', 'Lifecycle', 'Status', 'Cost', 'Funding gap'].filter(Boolean);
+    const rows = filteredProjects.map((project) => ([
+      project.title,
+      !isProvince && (project.province || 'Unspecified'),
+      project.primary_sector || 'Unspecified',
+      lifecycleBucket(project),
+      project.status?.replace(/_/g, ' ') || '',
+      project.total_cost || 0,
+      project.funding_gap || 0,
+    ].filter((cell) => cell !== false)));
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pcpp-analytics-${isProvince ? data.province : 'national'}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) return <Spinner size="lg" />;
 
@@ -216,7 +266,7 @@ export default function AnalyticsPage() {
 
       {activeFilter && (
         <div className="mb-4 flex items-center gap-2">
-          <span className="text-sm text-ink-secondary">Table filter:</span>
+          <span className="text-sm text-ink-secondary">Chart filter:</span>
           <button
             type="button"
             onClick={() => setActiveFilter(null)}
@@ -321,20 +371,86 @@ export default function AnalyticsPage() {
       </div>
 
       <section className="bg-pcpp-card border border-pcpp-border rounded-card overflow-hidden">
-        <div className="p-5 border-b border-pcpp-border flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-pcpp-pine flex items-center gap-2">
-              <BarChart3 size={18} strokeWidth={1.75} className="text-pcpp-emerald" />
-              Project drill-down
-            </h2>
-            <p className="text-xs text-ink-secondary">{num(filteredProjects.length)} projects shown</p>
+        <div className="p-5 border-b border-pcpp-border flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-pcpp-pine flex items-center gap-2">
+                <BarChart3 size={18} strokeWidth={1.75} className="text-pcpp-emerald" />
+                Project drill-down
+              </h2>
+              <p className="text-xs text-ink-secondary">{num(filteredProjects.length)} projects shown</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={filteredProjects.length === 0}
+              className="inline-flex items-center gap-2 bg-pcpp-emerald text-white px-4 py-2 rounded-control text-sm font-medium hover:bg-pcpp-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={18} strokeWidth={1.75} />
+              Export CSV
+            </button>
           </div>
+          <div className="grid md:grid-cols-4 gap-3">
+            <select
+              className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
+              value={tableFilters.sector}
+              onChange={(event) => setTableFilters((current) => ({ ...current, sector: event.target.value }))}
+            >
+              <option value="">All sectors</option>
+              {filterOptions.sectors.map((sector) => <option key={sector} value={sector}>{sector}</option>)}
+            </select>
+            <select
+              className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
+              value={tableFilters.lifecycle}
+              onChange={(event) => setTableFilters((current) => ({ ...current, lifecycle: event.target.value }))}
+            >
+              <option value="">All lifecycle stages</option>
+              {filterOptions.lifecycles.map((lifecycle) => <option key={lifecycle} value={lifecycle}>{lifecycle}</option>)}
+            </select>
+            <select
+              className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
+              value={tableFilters.trl}
+              onChange={(event) => setTableFilters((current) => ({ ...current, trl: event.target.value }))}
+            >
+              <option value="">All TRLs</option>
+              {filterOptions.trls.map((trl) => <option key={trl} value={trl}>TRL {trl}</option>)}
+            </select>
+            {!isProvince ? (
+              <select
+                className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
+                value={tableFilters.province}
+                onChange={(event) => setTableFilters((current) => ({ ...current, province: event.target.value }))}
+              >
+                <option value="">All provinces</option>
+                {filterOptions.provinces.map((province) => <option key={province} value={province}>{province}</option>)}
+              </select>
+            ) : (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white hover:bg-pcpp-mist"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+          {!isProvince && (
+            <div>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white hover:bg-pcpp-mist"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-pcpp-mist border-b border-pcpp-border">
               <tr>
-                {['Project', !isProvince && 'Province', 'Sector', 'Status', 'Cost', 'Funding gap'].filter(Boolean).map((heading) => (
+                {['Project', !isProvince && 'Province', 'Sector', 'Lifecycle', 'Status', 'Cost', 'Funding gap'].filter(Boolean).map((heading) => (
                   <th key={heading} className="text-left px-4 py-3 text-xs font-semibold text-ink-secondary">{heading}</th>
                 ))}
               </tr>
@@ -345,6 +461,7 @@ export default function AnalyticsPage() {
                   <td className="px-4 py-3 font-medium text-pcpp-pine">{project.title}</td>
                   {!isProvince && <td className="px-4 py-3 text-ink-secondary">{project.province || 'Unspecified'}</td>}
                   <td className="px-4 py-3 text-ink-secondary">{project.primary_sector || 'Unspecified'}</td>
+                  <td className="px-4 py-3 text-ink-secondary">{lifecycleBucket(project)}</td>
                   <td className="px-4 py-3 text-ink-secondary capitalize">{project.status?.replace(/_/g, ' ')}</td>
                   <td className="px-4 py-3 text-ink-secondary tabular-nums">{formatCurrency(project.total_cost)}</td>
                   <td className="px-4 py-3 text-ink-secondary tabular-nums">{formatCurrency(project.funding_gap)}</td>
@@ -352,7 +469,9 @@ export default function AnalyticsPage() {
               ))}
               {filteredProjects.length === 0 && (
                 <tr>
-                  <td colSpan={isProvince ? 5 : 6} className="px-4 py-10 text-center text-ink-tertiary">No projects match this filter.</td>
+                  <td colSpan={isProvince ? 6 : 7} className="px-4 py-10 text-center text-ink-tertiary">
+                    {isProvince ? `No projects in ${data.province} match these filters.` : 'No projects match these filters.'}
+                  </td>
                 </tr>
               )}
             </tbody>
