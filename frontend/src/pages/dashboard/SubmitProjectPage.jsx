@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { SECTORS, PROVINCES, DISTRICTS, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES } from '../../utils/constants';
+import { SECTORS, PROVINCES, getDistricts, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
@@ -156,8 +156,8 @@ export default function SubmitProjectPage() {
               <Input label="Expected Completion" type="date" value={form.expected_completion} onChange={e=>f('expected_completion',e.target.value)} />
             </div>
             <div className="grid md:grid-cols-4 gap-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Province *</label><select disabled={isProvincial} title={isProvincial ? 'Locked to your province' : undefined} className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${isProvincial ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={form.province} onChange={e=>f('province',e.target.value)}><option value="">Select Province</option>{PROVINCES.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">District</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.district} onChange={e=>f('district',e.target.value)}><option value="">Select District</option>{DISTRICTS.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Province *</label><select disabled={isProvincial} title={isProvincial ? 'Locked to your province' : undefined} className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${isProvincial ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={form.province} onChange={e=>setForm(p=>({...p, province:e.target.value, district:''}))}><option value="">Select Province</option>{PROVINCES.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">District</label><select disabled={!form.province} className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${!form.province ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={form.district} onChange={e=>f('district',e.target.value)}><option value="">{form.province ? 'Select District' : 'Select province first'}</option>{getDistricts(form.province).map(d=><option key={d} value={d}>{d}</option>)}</select></div>
               <Input label="City" placeholder="City name" value={form.city} onChange={e=>f('city',e.target.value)} />
               <Input label="Address" placeholder="Street address or location details" value={form.address} onChange={e=>f('address',e.target.value)} />
             </div>
