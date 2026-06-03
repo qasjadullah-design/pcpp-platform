@@ -154,13 +154,14 @@ router.put('/projects/:id/review', async (req, res) => {
 // GET all projects (admin)
 router.get('/projects', async (req, res) => {
   try {
-    const { status, sector, district, search, page = 1, limit = 15 } = req.query;
+    const { status, sector, province, district, search, page = 1, limit = 15 } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
 
     if (status && status !== 'all') { conditions.push(`p.status = $${idx++}`); params.push(status); }
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
+    if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
@@ -173,8 +174,8 @@ router.get('/projects', async (req, res) => {
 
     const [projects, count] = await Promise.all([
       pool.query(`
-        SELECT p.id, p.project_code, p.title, p.primary_sector, p.district, p.status,
-               p.total_cost, p.trl_level, p.created_at, p.priority_level, p.risk_level,
+        SELECT p.id, p.project_code, p.title, p.primary_sector, p.province, p.district, p.status,
+               p.total_cost, p.trl_level, p.created_at, p.priority_level, p.risk_level, p.organization_name,
                u.first_name || ' ' || u.last_name AS owner_name, u.email AS owner_email
         FROM projects p LEFT JOIN users u ON p.user_id = u.id
         ${where} ORDER BY p.created_at DESC LIMIT $${idx} OFFSET $${idx + 1}
@@ -201,13 +202,14 @@ router.get('/projects', async (req, res) => {
 // Export projects to Excel
 router.get('/projects/export', async (req, res) => {
   try {
-    const { status, sector, district, search } = req.query;
+    const { status, sector, province, district, search } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
 
     if (status && status !== 'all') { conditions.push(`p.status = $${idx++}`); params.push(status); }
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
+    if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
