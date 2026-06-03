@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import PcppLogo from '../common/PcppLogo';
 
 const userLinks = [
   { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
@@ -33,34 +34,33 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const links = user?.role === 'admin' ? adminLinks : user?.role === 'provincial' ? provincialLinks : userLinks;
+  const portalLabel = user?.role === 'admin' ? 'Admin panel'
+    : user?.role === 'provincial' ? `${user?.province || 'Provincial'} portal`
+    : 'User portal';
+
   return (
-    <aside className="w-64 min-h-screen bg-gray-900 text-white flex flex-col">
-      <div className="p-6 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">PC</div>
-          <div>
-            <div className="text-sm font-bold">PCPP</div>
-            <div className="text-xs text-gray-400">{user?.role === 'admin' ? 'Admin Panel' : user?.role === 'provincial' ? `${user?.province || 'Provincial'} Portal` : 'User Portal'}</div>
-          </div>
-        </div>
+    <aside className="w-64 min-h-screen bg-pcpp-pine text-white flex flex-col">
+      <div className="p-5 border-b border-white/10">
+        <PcppLogo variant="dark" />
+        <div className="text-[11px] text-white/60 mt-2">{portalLabel}</div>
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        <div className="text-xs text-gray-500 font-medium mb-3 px-3">MAIN MENU</div>
+        <div className="text-[11px] text-white/40 font-medium mb-3 px-3">Main menu</div>
         {links.map(({ to, icon, label }) => (
-          <Link key={to} to={to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${location.pathname === to ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
+          <Link key={to} to={to} className={`flex items-center gap-3 px-3 py-2.5 rounded-control text-sm font-medium transition-colors ${location.pathname === to ? 'bg-pcpp-emerald text-white' : 'text-white/70 hover:bg-pcpp-pine-700 hover:text-white'}`}>
             <span>{icon}</span>{label}
           </Link>
         ))}
       </nav>
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-white/10">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center text-white text-xs font-bold">{user?.first_name?.[0]}</div>
+          <div className="w-8 h-8 bg-pcpp-emerald rounded-full flex items-center justify-center text-white text-xs font-semibold">{user?.first_name?.[0]}</div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{user?.first_name} {user?.last_name}</div>
-            <div className="text-xs text-gray-400 truncate">{user?.organization}</div>
+            <div className="text-sm font-medium truncate text-white">{user?.first_name} {user?.last_name}</div>
+            <div className="text-xs text-white/60 truncate">{user?.organization}</div>
           </div>
         </div>
-        <button onClick={logout} className="w-full text-sm text-gray-400 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-800">← Logout</button>
+        <button onClick={logout} className="w-full text-sm text-white/70 hover:text-white flex items-center gap-2 px-3 py-2 rounded-control hover:bg-pcpp-pine-700">← Logout</button>
       </div>
     </aside>
   );

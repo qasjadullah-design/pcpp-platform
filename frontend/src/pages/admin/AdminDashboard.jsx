@@ -6,6 +6,7 @@ import { adminAPI } from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import Tooltip from '../../components/common/Tooltip';
 import { trlText } from '../../utils/trl';
+import { STATUS_COLORS_HEX } from '../../utils/designTokens';
 
 ChartJS.register(ArcElement, ChartTooltip, Legend);
 
@@ -48,7 +49,7 @@ export default function AdminDashboard() {
     labels: ['Pipeline', 'Ongoing', 'Completed'],
     datasets: [{
       data: [lifecycle.pipeline, lifecycle.ongoing, lifecycle.completed],
-      backgroundColor: ['#f59e0b', '#3b82f6', '#8b5cf6'],
+      backgroundColor: [STATUS_COLORS_HEX.pipeline, STATUS_COLORS_HEX.ongoing, STATUS_COLORS_HEX.completed],
       borderWidth: 0,
     }],
   };
@@ -104,7 +105,7 @@ export default function AdminDashboard() {
             <div key={s.primary_sector} className="flex items-center justify-between py-1.5 text-sm">
               <span className="text-gray-700">{s.primary_sector}</span>
               <div className="flex items-center gap-2">
-                <div className="w-20 h-1.5 bg-gray-100 rounded-full"><div className="h-1.5 bg-emerald-500 rounded-full" style={{width:`${Math.min(100,(s.count/maxSector)*100)}%`}}/></div>
+                <div className="w-20 h-1.5 bg-gray-100 rounded-full"><div className="h-1.5 bg-pcpp-emerald rounded-full" style={{width:`${Math.min(100,(s.count/maxSector)*100)}%`}}/></div>
                 <span className="text-gray-500 w-6 text-right">{s.count}</span>
               </div>
             </div>
@@ -145,9 +146,9 @@ export default function AdminDashboard() {
             <div className="max-w-[220px] mx-auto"><Doughnut data={lifecycleData} options={lifecycleOptions} /></div>
             <div className="space-y-3">
               {[
-                ['Pipeline', lifecycle.pipeline, 'bg-amber-500', 'Submitted / approved but not yet started'],
-                ['Ongoing', lifecycle.ongoing, 'bg-blue-500', 'Currently under implementation'],
-                ['Completed', lifecycle.completed, 'bg-purple-500', 'Finished projects'],
+                ['Pipeline', lifecycle.pipeline, 'bg-status-pipeline', 'Submitted / approved but not yet started'],
+                ['Ongoing', lifecycle.ongoing, 'bg-status-ongoing', 'Currently under implementation'],
+                ['Completed', lifecycle.completed, 'bg-status-completed', 'Finished projects'],
               ].map(([label, val, dot, hint]) => (
                 <div key={label} className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-gray-700">
@@ -172,7 +173,7 @@ export default function AdminDashboard() {
             <div key={p.province} className="flex items-center justify-between py-1.5 text-sm">
               <span className="text-gray-700 w-44 truncate">{p.province}</span>
               <div className="flex items-center gap-2 flex-1">
-                <div className="flex-1 h-2 bg-gray-100 rounded-full"><div className="h-2 bg-indigo-500 rounded-full" style={{width:`${Math.min(100,(p.count/maxProvince)*100)}%`}}/></div>
+                <div className="flex-1 h-2 bg-gray-100 rounded-full"><div className="h-2 bg-pcpp-emerald rounded-full" style={{width:`${Math.min(100,(p.count/maxProvince)*100)}%`}}/></div>
                 <span className="text-gray-900 font-medium w-10 text-right">{p.count}</span>
                 <span className="text-gray-400 w-20 text-right">{p.total ? `Rs. ${(Number(p.total)/1e9).toFixed(1)}B` : '—'}</span>
               </div>
