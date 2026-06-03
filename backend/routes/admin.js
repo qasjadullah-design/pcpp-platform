@@ -3,6 +3,8 @@ const pool = require('../db/pool');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 // All admin routes require authentication + admin role
 router.use(authenticate, requireAdmin);
@@ -312,6 +314,42 @@ router.post('/users/invite', async (req, res) => {
     res.json({ message: `Invitation sent to ${email}`, invite_url: inviteUrl });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send invitation' });
+  }
+});
+
+// Admin: create an active user directly (returns a one-time temp password).
+// Sets both password (NOT NULL) and password_hash (used by login).
+router.post('/users', async (req, res) => {
+  try {
+    const { first_name, last_name, email, role, province, organization } = req.body;
+    const allowedRoles = ['admin', 'project_owner', 'investor', 'government', 'ngo', 'provincial'];
+
+    if (!first_name || !last_name || !email || !role) {
+      return res.status(400).json({ error: 'first_name, last_name, email and role are required' });
+    }
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+    if (role === 'provincial' && !province) {
+      return res.status(400).json({ error: 'Province is required for provincial users' });
+    }
+
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows[0]) return res.status(409).json({ error: 'Email already registered' });
+
+    const tempPassword = crypto.randomBytes(6).toString('hex') + '#7';
+    const hash = await bcrypt.hash(tempPassword, 12);
+
+    const result = await pool.query(`
+      INSERT INTO users (first_name, last_name, email, organization, role, status, province, password, password_hash)
+      VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $7)
+      RETURNING id, first_name, last_name, email, role, status, province, organization, created_at
+    `, [first_name, last_name, email, organization || null, role, role === 'provincial' ? province : (province || null), hash]);
+
+    res.status(201).json({ user: result.rows[0], temp_password: tempPassword });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
