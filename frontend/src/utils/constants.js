@@ -113,6 +113,24 @@ export const FEASIBILITY_STATUS = ['Not started','In progress','Completed'];
 // B3 — Water-Energy-Food nexus
 export const WEF_NEXUS = ['Water','Energy','Food'];
 
+// C1 — CO2 mitigation units (factor = multiplier to convert to tonnes CO2e)
+export const CO2_UNITS = [
+  { value: 'kgCO2e', label: 'kg CO₂e', factor: 0.001 },
+  { value: 'tCO2e',  label: 't CO₂e',  factor: 1 },
+  { value: 'ktCO2e', label: 'kt CO₂e', factor: 1000 },
+  { value: 'MtCO2e', label: 'Mt CO₂e', factor: 1000000 },
+];
+export const MITIGATION_BASIS = [
+  { value: 'annual', label: 'Per year' },
+  { value: 'lifetime', label: 'Over project lifetime' },
+];
+// Normalize an entered value+unit to tonnes CO2e (null if not a number).
+export const toTco2e = (value, unit) => {
+  const factor = (CO2_UNITS.find(u => u.value === unit) || {}).factor ?? 1;
+  const num = Number(value);
+  return value === '' || value === null || value === undefined || Number.isNaN(num) ? null : num * factor;
+};
+
 // B4 — line ministry / sponsoring body
 export const LINE_MINISTRIES = [
   'Ministry of Climate Change & Environmental Coordination',

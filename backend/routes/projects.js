@@ -177,6 +177,7 @@ router.post('/', authenticate, async (req, res) => {
       carbon_market_relevant, carbon_standard, carbon_methodology, carbon_credit_status,
       feasibility_status, feasibility_study_url, feasibility_notes, land_acquired,
       wef_nexus, line_ministry, provincial_contacts, partners,
+      mitigation_value, mitigation_unit, mitigation_basis,
       organization_name, organization_type, organization_website,
       tags, shareholders, team, videos, future_plans, linked_projects
     } = req.body;
@@ -187,6 +188,11 @@ router.post('/', authenticate, async (req, res) => {
 
     // Provincial users can only file under their own province; ignore any body value.
     const effectiveProvince = req.user.role === 'provincial' ? req.user.province : province;
+
+    // Normalize CO2 mitigation to tonnes CO2e server-side (don't trust client maths).
+    const CO2_FACTORS = { kgCO2e: 0.001, tCO2e: 1, ktCO2e: 1000, MtCO2e: 1000000 };
+    const mitVal = (mitigation_value === '' || mitigation_value === undefined || mitigation_value === null) ? null : Number(mitigation_value);
+    const mitTco2e = (mitVal !== null && !Number.isNaN(mitVal)) ? mitVal * (CO2_FACTORS[mitigation_unit] ?? 1) : null;
 
     const result = await client.query(`
       INSERT INTO projects (
@@ -201,8 +207,9 @@ router.post('/', authenticate, async (req, res) => {
   tags, user_id, province,
   carbon_market_relevant, carbon_standard, carbon_methodology, carbon_credit_status,
   feasibility_status, feasibility_study_url, feasibility_notes, land_acquired,
-  wef_nexus, line_ministry, provincial_contacts, partners
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45)
+  wef_nexus, line_ministry, provincial_contacts, partners,
+  mitigation_value, mitigation_unit, mitigation_basis, mitigation_tco2e
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'under_review',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49)
 RETURNING *
     `, [
   title, abstract, description, primary_sector, sub_sectors,
@@ -217,7 +224,8 @@ RETURNING *
   carbon_market_relevant || false, n(carbon_standard), n(carbon_methodology), n(carbon_credit_status),
   n(feasibility_status), n(feasibility_study_url), n(feasibility_notes), land_acquired || false,
   wef_nexus && wef_nexus.length ? wef_nexus : null, n(line_ministry),
-  JSON.stringify(provincial_contacts || []), JSON.stringify(partners || [])
+  JSON.stringify(provincial_contacts || []), JSON.stringify(partners || []),
+  mitVal, n(mitigation_unit), n(mitigation_basis), mitTco2e
 ]);
 
     const project = result.rows[0];
