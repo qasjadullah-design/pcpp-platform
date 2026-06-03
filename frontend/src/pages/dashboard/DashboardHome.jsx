@@ -91,7 +91,7 @@ export default function DashboardHome() {
           {myInterests.slice(0,3).map(i => (
             <div key={i.id} className="flex items-center justify-between py-2 border-b border-pcpp-border last:border-0">
               <div className="flex items-center gap-3"><span className="w-8 h-8 bg-pcpp-emerald/10 text-pcpp-emerald rounded-control flex items-center justify-center"><Building2 size={16} strokeWidth={1.75} /></span>
-                <div><p className="text-sm font-medium text-ink">{i.project?.title}</p><p className="text-xs text-ink-tertiary">{new Date(i.created_at).toLocaleDateString()}</p></div>
+                <div><p className="text-sm font-medium text-ink">{i.project_title || i.project?.title}</p><p className="text-xs text-ink-tertiary">{new Date(i.created_at).toLocaleDateString()}</p></div>
               </div>
               <Badge label={i.status === 'owner_replied' ? 'Owner replied' : 'Pending'} color={i.status === 'owner_replied' ? 'green' : 'yellow'} />
             </div>
