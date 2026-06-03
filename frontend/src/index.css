@@ -2,9 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* PCPP design tokens — CSS variable mirror of tailwind.config.js.
+   Use for non-Tailwind spots (inline styles, Chart.js, third-party). */
+:root {
+  --pcpp-pine: #0E3A2F;
+  --pcpp-pine-700: #14503F;
+  --pcpp-emerald: #1D9E75;
+  --pcpp-emerald-600: #178363;
+  --pcpp-mist: #F4F6F3;
+
+  --pcpp-water: #2E86C1;
+  --pcpp-energy: #1D9E75;
+  --pcpp-food: #E9A23B;
+  --pcpp-harvest: #E9A23B;
+
+  --status-ongoing: #1D9E75;
+  --status-pipeline: #E9A23B;
+  --status-completed: #6B8F84;
+  --status-review: #2E86C1;
+  --status-rejected: #A32D2D;
+
+  --text-primary: #1A2520;
+  --text-secondary: #5B6B64;
+  --text-tertiary: #8A968F;
+
+  --pcpp-card: #FFFFFF;
+  --pcpp-border: rgba(14, 58, 47, 0.10);
+}
+
 @layer base {
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--pcpp-mist);
+    color: var(--text-primary);
+  }
+  /* Tabular figures for aligned KPI numbers (opt-in via .tabular-nums). */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
 @layer utilities {
