@@ -163,7 +163,7 @@ router.get('/projects', async (req, res) => {
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
     if (search) {
-      conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx})`);
+      conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -201,14 +201,31 @@ router.get('/projects', async (req, res) => {
 // Export projects to Excel
 router.get('/projects/export', async (req, res) => {
   try {
+    const { status, sector, district, search } = req.query;
+    const conditions = [];
+    const params = [];
+    let idx = 1;
+
+    if (status && status !== 'all') { conditions.push(`p.status = $${idx++}`); params.push(status); }
+    if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
+    if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
+    if (search) {
+      conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
     const result = await pool.query(`
-      SELECT p.project_code, p.title, p.primary_sector, p.district, p.city, p.status,
+      SELECT p.project_code, p.title, p.primary_sector, p.province, p.district, p.city, p.status,
              p.total_cost, p.funding_gap, p.expected_roi, p.trl_level,
              p.direct_beneficiaries, p.jobs_created, p.organization_name,
              p.created_at, u.email AS owner_email
       FROM projects p LEFT JOIN users u ON p.user_id = u.id
+      ${where}
       ORDER BY p.created_at DESC
-    `);
+    `, params);
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('PCPP Projects');
@@ -216,7 +233,9 @@ router.get('/projects/export', async (req, res) => {
       { header: 'Project Code', key: 'project_code', width: 15 },
       { header: 'Title', key: 'title', width: 40 },
       { header: 'Sector', key: 'primary_sector', width: 20 },
+      { header: 'Province', key: 'province', width: 20 },
       { header: 'District', key: 'district', width: 20 },
+      { header: 'City', key: 'city', width: 20 },
       { header: 'Status', key: 'status', width: 15 },
       { header: 'Total Cost (PKR)', key: 'total_cost', width: 20 },
       { header: 'Funding Gap (PKR)', key: 'funding_gap', width: 20 },
@@ -225,13 +244,14 @@ router.get('/projects/export', async (req, res) => {
       { header: 'Beneficiaries', key: 'direct_beneficiaries', width: 15 },
       { header: 'Jobs Created', key: 'jobs_created', width: 15 },
       { header: 'Organization', key: 'organization_name', width: 30 },
+      { header: 'Owner Email', key: 'owner_email', width: 30 },
       { header: 'Submitted Date', key: 'created_at', width: 20 }
     ];
     sheet.getRow(1).font = { bold: true };
     sheet.addRows(result.rows);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=bcpp-projects.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename=pcpp-projects.xlsx');
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

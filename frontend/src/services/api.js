@@ -59,6 +59,7 @@ export const adminAPI = {
   getAnalytics: () => api.get('/admin/analytics'),
   getDashboard: () => api.get('/admin/dashboard'),
   getProjects: (params) => api.get('/admin/projects', { params }),
+  exportProjects: (params) => api.get('/admin/projects/export', { params, responseType: 'blob' }),
   getUsers: (params) => api.get('/admin/users', { params }),
   createUser: (data) => api.post('/admin/users', data),
   updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { status }),

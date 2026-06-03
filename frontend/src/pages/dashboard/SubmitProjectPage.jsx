@@ -6,9 +6,69 @@ import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { SECTORS, PROVINCES, getDistricts, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES, CO2_UNITS, MITIGATION_BASIS, toTco2e } from '../../utils/constants';
 import toast from 'react-hot-toast';
-import { CheckCircle, ClipboardList, Globe2, Save, Zap } from 'lucide-react';
+import {
+  Banknote,
+  CheckCircle,
+  Clapperboard,
+  ClipboardList,
+  Cpu,
+  Droplets,
+  Factory,
+  Fish,
+  FlaskConical,
+  Globe2,
+  GraduationCap,
+  Hammer,
+  HeartPulse,
+  Home,
+  Hotel,
+  Landmark,
+  Layers,
+  Leaf,
+  Palette,
+  Pickaxe,
+  RadioTower,
+  Route,
+  Save,
+  Shield,
+  ShoppingCart,
+  Trophy,
+  Truck,
+  Users,
+  Wheat,
+  Zap,
+} from 'lucide-react';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
+
+const SECTOR_ICONS = {
+  'Energy & Power': Zap,
+  'Water & Sanitation': Droplets,
+  'Agriculture & Food': Wheat,
+  'Health & Medical': HeartPulse,
+  'Education & Training': GraduationCap,
+  'Transport & Logistics': Truck,
+  'Technology & IT': Cpu,
+  Infrastructure: Landmark,
+  'Housing & Real Estate': Home,
+  'Industry & Manufacturing': Factory,
+  'Tourism & Hospitality': Hotel,
+  'Environment & Climate': Leaf,
+  'Finance & Banking': Banknote,
+  'Telecoms & Communications': RadioTower,
+  'Retail & Commerce': ShoppingCart,
+  Construction: Hammer,
+  'Arts & Culture': Palette,
+  'Media & Entertainment': Clapperboard,
+  'Social Services': Users,
+  'Research & Development': FlaskConical,
+  'Defense & Security': Shield,
+  'Sports & Recreation': Trophy,
+  'Mining & Minerals': Pickaxe,
+  'Fisheries & Coastal': Fish,
+  'CPEC Infrastructure': Route,
+  Other: Layers,
+};
 
 export default function SubmitProjectPage() {
   const navigate = useNavigate();
@@ -100,11 +160,14 @@ export default function SubmitProjectPage() {
             <div>
               <p className="text-sm text-gray-500 mb-3">Choose the primary sector and related sub-sectors</p>
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {SECTORS.map(s => (
-                  <button key={s} onClick={()=>f('primary_sector',s)} className={`p-3 border rounded-xl text-center text-xs font-medium transition ${form.primary_sector===s?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
-                    <Zap size={18} strokeWidth={1.75} className="mx-auto mb-1" />{s}
-                  </button>
-                ))}
+                {SECTORS.map(s => {
+                  const Icon = SECTOR_ICONS[s] || Layers;
+                  return (
+                    <button key={s} onClick={()=>f('primary_sector',s)} className={`p-3 border rounded-xl text-center text-xs font-medium transition ${form.primary_sector===s?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
+                      <Icon size={20} strokeWidth={1.75} className="mx-auto mb-1" />{s}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>

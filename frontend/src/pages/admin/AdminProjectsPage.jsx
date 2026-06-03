@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { projectsAPI, adminAPI } from '../../services/api';
+import { adminAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
 import { STATUS_COLORS, SECTORS, formatCurrency } from '../../utils/constants';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
+
+const PAGE_SIZE = 25;
 
 const NEXT_STATUS = {
   under_review: { label: 'Approve', value: 'approved', color: 'bg-emerald-600 hover:bg-emerald-700' },
@@ -15,18 +17,21 @@ export default function AdminProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState({ search:'', status:'', sector:'', page:1 });
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [stats, setStats] = useState({ under_review: 0, approved: 0, archived: 0 });
 
   const fetchProjects = () => {
     setLoading(true);
-    adminAPI.getProjects({ ...filters, limit: 10 })
+    adminAPI.getProjects({ ...filters, limit: PAGE_SIZE })
     .then(r => {
         const list = r.projects || r || [];
         const count = r.total || list.length;;
         setProjects(list);
         setTotal(count);
+        setTotalPages(r.pages || Math.max(1, Math.ceil(count / PAGE_SIZE)));
         const s = { under_review: 0, approved: 0, archived: 0 };
         (r.status_counts || []).forEach(row => {
           if (s[row.status] !== undefined) s[row.status] = parseInt(row.count);
@@ -51,12 +56,35 @@ export default function AdminProjectsPage() {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { page, ...exportFilters } = filters;
+      const blob = await adminAPI.exportProjects(exportFilters);
+      const url = window.URL.createObjectURL(new Blob([blob], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'pcpp-projects.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Projects export downloaded');
+    } catch (e) {
+      toast.error(e.message || 'Failed to export projects');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div><h1 className="text-2xl font-bold text-gray-900">All Projects</h1><p className="text-sm text-gray-500">Manage and monitor all platform projects</p></div>
         <div className="flex gap-3">
-          <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Export</button>
+          <button onClick={handleExport} disabled={exporting} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">{exporting ? 'Exporting...' : 'Export'}</button>
           <Link to="/dashboard/submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">+ Add Project</Link>
         </div>
       </div>
@@ -97,6 +125,10 @@ export default function AdminProjectsPage() {
 
       {loading ? <Spinner/> : (
         <div className="bg-white border rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 text-sm text-gray-500">
+            <span>Showing {projects.length.toLocaleString()} of {total.toLocaleString()} projects</span>
+            <span>Page {filters.page.toLocaleString()} of {totalPages.toLocaleString()}</span>
+          </div>
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>{['Project','Organization','Sector','Status','Cost','Actions'].map(h=><th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{h}</th>)}</tr>
@@ -130,6 +162,22 @@ export default function AdminProjectsPage() {
               })}
             </tbody>
           </table>
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-100">
+            <button
+              onClick={() => setFilters(f => ({ ...f, page: Math.max(1, f.page - 1) }))}
+              disabled={filters.page <= 1}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setFilters(f => ({ ...f, page: Math.min(totalPages, f.page + 1) }))}
+              disabled={filters.page >= totalPages}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
