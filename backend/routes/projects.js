@@ -125,7 +125,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
       pool.query('SELECT * FROM project_team WHERE project_id = $1 ORDER BY is_lead DESC', [id]),
       pool.query('SELECT * FROM project_documents WHERE project_id = $1', [id]),
       pool.query('SELECT * FROM project_videos WHERE project_id = $1', [id]),
-      pool.query('SELECT pu.*, u.first_name || \' \' || u.last_name AS author_name FROM project_updates pu LEFT JOIN users u ON pu.author_id = u.id WHERE pu.project_id = $1 ORDER BY pu.created_at DESC', [id]),
+      pool.query('SELECT pu.*, u.first_name || \' \' || u.last_name AS author_name FROM project_updates pu LEFT JOIN users u ON pu.user_id = u.id WHERE pu.project_id = $1 ORDER BY pu.created_at DESC', [id]),
       pool.query('SELECT * FROM project_shareholders WHERE project_id = $1', [id]),
       pool.query('SELECT * FROM project_future_plans WHERE project_id = $1 ORDER BY created_at', [id]),
       pool.query(`
@@ -171,7 +171,7 @@ router.post('/', authenticate, async (req, res) => {
       sdg_goals, trl_level, risk_level, priority_level,
       duration_months, start_date, expected_completion,
       province, district, city, address,
-      currency, total_project_cost, research_fund, equity_fund,
+      currency, total_cost, total_project_cost, research_fund, equity_fund,
       debt_loan, grant_amount, grant, funding_gap, min_investment, minimum_investment, expected_roi, payback_years,
       direct_beneficiaries, indirect_beneficiaries, jobs_created,
       carbon_market_relevant, carbon_standard, carbon_methodology, carbon_credit_status,
@@ -184,6 +184,7 @@ router.post('/', authenticate, async (req, res) => {
 
     const normalizedGrantAmount = grant_amount ?? grant ?? null;
     const normalizedMinInvestment = min_investment ?? minimum_investment ?? null;
+    const normalizedTotalCost = total_cost ?? total_project_cost ?? null;
     const n = (v) => (v === '' || v === undefined ? null : v);
 
     // Provincial users can only file under their own province; ignore any body value.
@@ -216,7 +217,7 @@ RETURNING *
   n(trl_level), risk_level, priority_level,
   n(duration_months), n(start_date), n(expected_completion),
   district, city, address,
-  currency, n(total_project_cost), n(research_fund), n(equity_fund),
+  currency, n(normalizedTotalCost), n(research_fund), n(equity_fund),
   n(debt_loan), n(normalizedGrantAmount), n(funding_gap), n(normalizedMinInvestment), n(expected_roi), n(payback_years),
   n(direct_beneficiaries), n(indirect_beneficiaries), n(jobs_created),
   organization_name, organization_type, organization_website,
@@ -378,15 +379,22 @@ router.post('/:id/updates', authenticate, async (req, res) => {
     const { id } = req.params;
     const { update_type, title, content } = req.body;
 
-    const project = await pool.query('SELECT owner_id FROM projects WHERE id = $1', [id]);
+    const project = await pool.query('SELECT user_id, province FROM projects WHERE id = $1', [id]);
     if (!project.rows[0]) return res.status(404).json({ error: 'Project not found' });
 
-    const isOwner = project.rows[0].owner_id === req.user.id;
+    const isOwner = project.rows[0].user_id === req.user.id;
     const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
-    if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Unauthorized' });
+    const isProvincial = req.user.role === 'provincial';
+    if (isProvincial) {
+      if (project.rows[0].province !== req.user.province) {
+        return res.status(403).json({ error: 'Forbidden: project is outside your province' });
+      }
+    } else if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
     const result = await pool.query(`
-      INSERT INTO project_updates (project_id, author_id, update_type, title, content)
+      INSERT INTO project_updates (project_id, user_id, update_type, title, content)
       VALUES ($1,$2,$3,$4,$5) RETURNING *
     `, [id, req.user.id, update_type || 'general', title, content]);
 
