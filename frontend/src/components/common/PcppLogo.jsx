@@ -1,4 +1,5 @@
 import React from 'react';
+import { TOKENS } from '../../utils/designTokens';
 
 /**
  * PCPP wordmark + interlocking-circles "nexus" mark, as inline SVG so it scales
@@ -8,9 +9,9 @@ import React from 'react';
  */
 export default function PcppLogo({ variant = 'dark', showTagline = true, className = '' }) {
   const onDark = variant === 'dark';
-  const ring1 = '#1D9E75';                    // emerald (both variants)
-  const ring2 = onDark ? '#7FD3B4' : '#178363'; // mint on dark / emerald-600 on light
-  const ring3 = onDark ? '#BFE9D9' : '#0E3A2F'; // light mint on dark / pine on light
+  const ring1 = TOKENS.emerald;
+  const ring2 = onDark ? TOKENS.mist : TOKENS.emerald600;
+  const ring3 = onDark ? TOKENS.card : TOKENS.pine;
   const titleColor = onDark ? 'text-white' : 'text-pcpp-pine';
   const tagColor = onDark ? 'text-white/70' : 'text-ink-secondary';
 

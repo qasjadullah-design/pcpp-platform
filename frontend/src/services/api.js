@@ -42,7 +42,7 @@ export const projectsAPI = {
   getSaved: () => api.get('/projects/saved'),
   toggleSave: (id) => api.post(`/projects/${id}/save`),
   postUpdate: (id, data) => api.post(`/projects/${id}/updates`, data),
-  getStats: () => api.get('/projects/stats'),
+  getStats: () => api.get('/projects/stats/public'),
   uploadFile: (id, formData) => api.post(`/projects/${id}/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 

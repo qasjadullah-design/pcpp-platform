@@ -4,6 +4,7 @@ import { projectsAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
 import { STATUS_COLORS } from '../../utils/constants';
 import toast from 'react-hot-toast';
+import { FolderOpen, MessageCircle } from 'lucide-react';
 
 export default function MyProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -28,7 +29,7 @@ export default function MyProjectsPage() {
 
       {loading ? <p>Loading...</p> : projects.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
-          <p className="text-4xl mb-4">📁</p>
+          <FolderOpen size={40} strokeWidth={1.75} className="mx-auto mb-4 text-ink-secondary" />
           <p className="font-medium">No projects yet</p>
           <Link to="/dashboard/submit" className="text-emerald-600 hover:underline text-sm">Submit your first project →</Link>
         </div>
@@ -44,7 +45,7 @@ export default function MyProjectsPage() {
                     <Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status]||'gray'}/>
                   </div>
                   <p className="text-xs text-gray-500">{p.district} • {p.primary_sector}</p>
-                  {p.admin_feedback && <p className="text-xs text-orange-600 mt-1">💬 {p.admin_feedback}</p>}
+                  {p.admin_feedback && <p className="text-xs text-orange-600 mt-1 flex items-center gap-1"><MessageCircle size={13} strokeWidth={1.75} /> {p.admin_feedback}</p>}
                 </div>
               </div>
               <div className="flex items-center gap-2">

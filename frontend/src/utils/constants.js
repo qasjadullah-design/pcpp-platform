@@ -174,9 +174,11 @@ export const PROJECT_STATUSES = {
 };
 
 export const formatCurrency = (value, currency = 'PKR') => {
+  if (value === null || value === undefined || value === '') return 'N/A';
   const num = Number(value);
-  if (!value || Number.isNaN(num)) return 'N/A';
-  if (Math.abs(num) >= 1e9) return `${currency} ${(num / 1e9).toFixed(1)}B`;
-  if (Math.abs(num) >= 1e6) return `${currency} ${(num / 1e6).toFixed(1)}M`;
+  if (Number.isNaN(num)) return 'N/A';
+  if (Math.abs(num) >= 1e12) return `${currency} ${(num / 1e12).toLocaleString(undefined, { maximumFractionDigits: 1 })}T`;
+  if (Math.abs(num) >= 1e9) return `${currency} ${(num / 1e9).toLocaleString(undefined, { maximumFractionDigits: 1 })}B`;
+  if (Math.abs(num) >= 1e6) return `${currency} ${(num / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`;
   return `${currency} ${num.toLocaleString()}`;
 };

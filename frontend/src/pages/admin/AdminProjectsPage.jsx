@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { projectsAPI, adminAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
-import { STATUS_COLORS, SECTORS } from '../../utils/constants';
+import { STATUS_COLORS, SECTORS, formatCurrency } from '../../utils/constants';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
 
@@ -70,7 +70,7 @@ export default function AdminProjectsPage() {
           ['Archived', stats.archived, 'gray'],
         ].map(([l, v, c]) => (
           <div key={l} className="bg-white border rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold text-gray-900">{v}</div>
+            <div className="text-2xl font-bold text-gray-900 tabular-nums">{Number(v).toLocaleString()}</div>
             <div className="text-xs text-gray-500">{l}</div>
           </div>
         ))}
@@ -110,7 +110,7 @@ export default function AdminProjectsPage() {
                     <td className="px-4 py-3 text-gray-600">{p.organization_name}</td>
                     <td className="px-4 py-3 text-gray-600">{p.primary_sector}</td>
                     <td className="px-4 py-3"><Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status]||'gray'} dot/></td>
-                    <td className="px-4 py-3 text-gray-600">{p.total_cost ? `PKR ${(Number(p.total_cost)/1e9).toFixed(1)}B` : 'N/A'}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatCurrency(p.total_cost)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <Link to={`/projects/${p.id}`} className="text-xs border border-gray-300 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50">View</Link>

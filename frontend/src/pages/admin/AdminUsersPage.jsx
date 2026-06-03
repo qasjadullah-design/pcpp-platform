@@ -6,6 +6,7 @@ import Modal from '../../components/common/Modal';
 import Input from '../../components/common/Input';
 import { PROVINCES } from '../../utils/constants';
 import toast from 'react-hot-toast';
+import { CheckCircle } from 'lucide-react';
 
 const BLANK_USER = { first_name:'', last_name:'', email:'', organization:'', role:'provincial', province:'' };
 
@@ -109,7 +110,7 @@ export default function AdminUsersPage() {
         {createdCreds ? (
           <div className="space-y-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm">
-              <p className="font-medium text-emerald-800 mb-2">✅ User created. Share these credentials — the password is shown only once:</p>
+              <p className="font-medium text-emerald-800 mb-2 flex items-center gap-2"><CheckCircle size={18} strokeWidth={1.75} /> User created. Share these credentials — the password is shown only once:</p>
               <p className="text-gray-700"><span className="text-gray-500">Email:</span> <span className="font-mono">{createdCreds.email}</span></p>
               <p className="text-gray-700"><span className="text-gray-500">Temp password:</span> <span className="font-mono font-bold">{createdCreds.temp_password}</span></p>
             </div>

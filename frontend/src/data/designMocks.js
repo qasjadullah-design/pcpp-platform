@@ -17,7 +17,6 @@ const featuredProjects = [
     cost: '35.0B',
     fundingGap: '15.8B',
     roi: '14.5%',
-    accentColor: '#059669',
   },
   {
     id: 'mock-2',
@@ -30,7 +29,6 @@ const featuredProjects = [
     cost: '120.0B',
     fundingGap: '80.0B',
     roi: '12%',
-    accentColor: '#3b82f6',
   },
   {
     id: 'mock-3',
@@ -43,7 +41,6 @@ const featuredProjects = [
     cost: '8.0B',
     fundingGap: '3.0B',
     roi: '8.5%',
-    accentColor: '#ec4899',
   },
   {
     id: 'mock-4',
@@ -56,7 +53,6 @@ const featuredProjects = [
     cost: '15.0B',
     fundingGap: '10.0B',
     roi: '10%',
-    accentColor: '#f97316',
   },
   {
     id: 'mock-5',
@@ -69,7 +65,6 @@ const featuredProjects = [
     cost: '5.0B',
     fundingGap: '2.5B',
     roi: '18%',
-    accentColor: '#ef4444',
   },
   {
     id: 'mock-6',
@@ -82,7 +77,6 @@ const featuredProjects = [
     cost: '25.0B',
     fundingGap: '15.0B',
     roi: '11.5%',
-    accentColor: '#06b6d4',
   },
 ];
 
