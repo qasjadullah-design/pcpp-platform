@@ -439,9 +439,9 @@ router.get('/stats/public', async (req, res) => {
   try {
     const [projects, funding, beneficiaries, investors] = await Promise.all([
       pool.query("SELECT COUNT(*) FROM projects WHERE status = 'approved'"),
-      pool.query("SELECT COALESCE(SUM(total_project_cost),0) AS total FROM projects WHERE status = 'approved'"),
+      pool.query("SELECT COALESCE(SUM(total_cost),0) AS total FROM projects WHERE status = 'approved'"),
       pool.query("SELECT COALESCE(SUM(direct_beneficiaries),0) AS total FROM projects WHERE status = 'approved'"),
-      pool.query("SELECT COUNT(DISTINCT investor_id) FROM interests")
+      pool.query("SELECT COUNT(DISTINCT user_id) FROM interests")
     ]);
 
     res.json({
