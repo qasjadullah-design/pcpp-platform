@@ -27,6 +27,7 @@ const provincialLinks = [
   { to: '/dashboard', Icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/projects', Icon: Search, label: 'Province projects' },
   { to: '/dashboard/submit', Icon: Plus, label: 'Submit project' },
+  { to: '/dashboard/analytics', Icon: BarChart3, label: 'Analytics' },
   { to: '/dashboard/settings', Icon: Settings, label: 'Settings' },
 ];
 

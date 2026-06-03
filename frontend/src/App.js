@@ -20,6 +20,7 @@ import MyProjectsPage from './pages/dashboard/MyProjectsPage';
 import MyInterestsPage from './pages/dashboard/MyInterestsPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import SubmitProjectPage from './pages/dashboard/SubmitProjectPage';
+import AnalyticsPage from './pages/dashboard/AnalyticsPage';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -33,7 +34,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
   if (loading) return <Spinner size="lg"/>;
   if (!user) return <Navigate to="/login" replace/>;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" replace/>;
+  if (adminOnly && !['admin', 'superadmin'].includes(user.role)) return <Navigate to="/dashboard" replace/>;
   return children;
 };
 
@@ -53,6 +54,7 @@ const AppRoutes = () => {
       <Route path="/dashboard/projects" element={<ProtectedRoute><DashboardLayout><MyProjectsPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/interests" element={<ProtectedRoute><DashboardLayout><MyInterestsPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/submit" element={<ProtectedRoute><DashboardLayout><SubmitProjectPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/dashboard/analytics" element={<ProtectedRoute><DashboardLayout><AnalyticsPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage/></DashboardLayout></ProtectedRoute>}/>
 
       {/* Admin Routes */}
@@ -60,6 +62,7 @@ const AppRoutes = () => {
       <Route path="/admin/review" element={<ProtectedRoute adminOnly><DashboardLayout><AdminReviewPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/admin/projects" element={<ProtectedRoute adminOnly><DashboardLayout><AdminProjectsPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/admin/users" element={<ProtectedRoute adminOnly><DashboardLayout><AdminUsersPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/admin/analytics" element={<ProtectedRoute adminOnly><DashboardLayout><AnalyticsPage/></DashboardLayout></ProtectedRoute>}/>
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace/>}/>
