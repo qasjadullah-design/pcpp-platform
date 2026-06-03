@@ -4,6 +4,8 @@ import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import toast from 'react-hot-toast';
+import { Building2, CheckCircle, Clock, RotateCw, XCircle } from 'lucide-react';
+import { formatCurrency } from '../../utils/constants';
 
 export default function AdminReviewPage() {
   const [projects, setProjects] = useState([]);
@@ -34,7 +36,7 @@ export default function AdminReviewPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pending Review</h1>
-          <p className="text-sm text-gray-500">{projects.length} projects waiting for your approval</p>
+          <p className="text-sm text-gray-500">{projects.length.toLocaleString()} projects waiting for your approval</p>
         </div>
         <div className="flex gap-2 text-xs">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>Urgent (&lt;3 hrs)</span>
@@ -45,7 +47,7 @@ export default function AdminReviewPage() {
 
       {loading ? <Spinner/> : projects.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
-          <p className="text-4xl mb-4">✅</p><p className="font-medium">No projects pending review</p>
+          <CheckCircle size={40} strokeWidth={1.75} className="mx-auto mb-4 text-pcpp-emerald" /><p className="font-medium">No projects pending review</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -63,12 +65,17 @@ export default function AdminReviewPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${urgency==='red'?'bg-red-100 text-red-700':urgency==='yellow'?'bg-yellow-100 text-yellow-700':'bg-green-100 text-green-700'}`}>{urgency==='red'?'Urgent':urgency==='yellow'?'Medium':'Normal'}</span>
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{p.primary_sector}</span>
                       </div>
-                      <p className="text-xs text-gray-500">🏢 {p.organization_name} • Rs. {p.total_cost?(Number(p.total_cost)/1e9).toFixed(1)+'B':'N/A'} • TRL-{p.trl_level} • ⏱ Submitted {Math.round(hrs)} hrs ago</p>
+                      <p className="text-xs text-gray-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="inline-flex items-center gap-1"><Building2 size={13} strokeWidth={1.75} /> {p.organization_name}</span>
+                        <span>{formatCurrency(p.total_cost)}</span>
+                        <span>TRL-{p.trl_level}</span>
+                        <span className="inline-flex items-center gap-1"><Clock size={13} strokeWidth={1.75} /> Submitted {Math.round(hrs).toLocaleString()} hrs ago</span>
+                      </p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={()=>{setSelected(p);setAction('');setFeedback('');}} className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">Quick Preview</button>
-                    <button onClick={()=>{setSelected(p);setAction('approve');setFeedback('');}} className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700">Start Review →</button>
+                    <button onClick={()=>{setSelected(p);setAction('approve');setFeedback('');}} className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700">Start Review</button>
                   </div>
                 </div>
               </div>
@@ -83,14 +90,14 @@ export default function AdminReviewPage() {
             <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2">
               <p><b>Organization:</b> {selected.organization_name}</p>
               <p><b>Sector:</b> {selected.primary_sector} • <b>District:</b> {selected.district}</p>
-              <p><b>Cost:</b> Rs. {selected.total_cost?(Number(selected.total_cost)/1e9).toFixed(1)+'B':'N/A'} • <b>TRL:</b> {selected.trl_level}</p>
+              <p><b>Cost:</b> {formatCurrency(selected.total_cost)} • <b>TRL:</b> {selected.trl_level}</p>
               <p><b>Abstract:</b> {selected.abstract}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-700 mb-2">Action</p>
               <div className="flex gap-3">
-                {[['approve','✅ Approve','green'],['reject','❌ Reject','red'],['request_changes','🔄 Request Changes','yellow']].map(([v,l,c])=>(
-                  <button key={v} onClick={()=>setAction(v)} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${action===v ? c==='green'?'bg-green-600 text-white border-green-600':c==='red'?'bg-red-600 text-white border-red-600':'bg-yellow-500 text-white border-yellow-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>{l}</button>
+                {[['approve','Approve','green',CheckCircle],['reject','Reject','red',XCircle],['request_changes','Request Changes','yellow',RotateCw]].map(([v,l,c,Icon])=>(
+                  <button key={v} onClick={()=>setAction(v)} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition inline-flex items-center justify-center gap-2 ${action===v ? c==='green'?'bg-green-600 text-white border-green-600':c==='red'?'bg-red-600 text-white border-red-600':'bg-yellow-500 text-white border-yellow-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}><Icon size={18} strokeWidth={1.75} />{l}</button>
                 ))}
               </div>
             </div>

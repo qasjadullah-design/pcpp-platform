@@ -135,7 +135,7 @@ router.put('/projects/:id/review', async (req, res) => {
 
     // Notify owner
     const messages = {
-      approve: { title: 'Project Approved! 🎉', msg: `Your project "${result.rows[0].title}" has been approved and is now live.`, type: 'success' },
+      approve: { title: 'Project approved', msg: `Your project "${result.rows[0].title}" has been approved and is now live.`, type: 'success' },
       reject: { title: 'Project Review Update', msg: `Your project "${result.rows[0].title}" was not approved. Notes: ${notes}`, type: 'error' },
       request_changes: { title: 'Changes Requested', msg: `Please review and update your project "${result.rows[0].title}". Notes: ${notes}`, type: 'warning' }
     };

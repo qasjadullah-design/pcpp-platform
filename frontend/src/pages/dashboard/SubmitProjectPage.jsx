@@ -6,6 +6,7 @@ import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { SECTORS, PROVINCES, getDistricts, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES, CO2_UNITS, MITIGATION_BASIS, toTco2e } from '../../utils/constants';
 import toast from 'react-hot-toast';
+import { CheckCircle, ClipboardList, Globe2, Save, Zap } from 'lucide-react';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
 
@@ -101,7 +102,7 @@ export default function SubmitProjectPage() {
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {SECTORS.map(s => (
                   <button key={s} onClick={()=>f('primary_sector',s)} className={`p-3 border rounded-xl text-center text-xs font-medium transition ${form.primary_sector===s?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
-                    <div className="text-lg mb-1">⚡</div>{s}
+                    <Zap size={18} strokeWidth={1.75} className="mx-auto mb-1" />{s}
                   </button>
                 ))}
               </div>
@@ -225,7 +226,7 @@ export default function SubmitProjectPage() {
               <Input label="Jobs Created" type="number" placeholder="Direct jobs" value={form.jobs_created} onChange={e=>f('jobs_created',e.target.value)} />
             </div>
 
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2 pt-2">🌍 Climate Mitigation (CO₂)</h3>
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2 pt-2"><Globe2 size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Climate Mitigation (CO₂)</h3>
             <div className="grid md:grid-cols-3 gap-4">
               <Input label="Emission Reduction" type="number" placeholder="e.g., 5000" value={form.mitigation_value} onChange={e=>f('mitigation_value',e.target.value)} />
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Unit</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.mitigation_unit} onChange={e=>f('mitigation_unit',e.target.value)}>{CO2_UNITS.map(u=><option key={u.value} value={u.value}>{u.label}</option>)}</select></div>
@@ -297,7 +298,7 @@ export default function SubmitProjectPage() {
             <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">14</span> Tags & Keywords</h2>
             <Input label="Tags (comma separated)" placeholder="e.g., Solar, Infrastructure, CPEC, Green Initiative" value={form.tags} onChange={e=>f('tags',e.target.value)} />
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-              <h3 className="font-medium text-emerald-800 mb-2">📋 Project Summary</h3>
+              <h3 className="font-medium text-emerald-800 mb-2 flex items-center gap-2"><ClipboardList size={18} strokeWidth={1.75} /> Project Summary</h3>
               <div className="grid md:grid-cols-2 gap-2 text-sm text-emerald-700">
                 <p>Title: {form.title || 'Not set'}</p>
                 <p>Sector: {form.primary_sector || 'Not set'}</p>
@@ -321,11 +322,11 @@ export default function SubmitProjectPage() {
       <div className="flex items-center justify-between">
         <button onClick={()=>setStep(s=>Math.max(0,s-1))} disabled={step===0} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-50">← Cancel / Back</button>
         <div className="flex gap-3">
-          <Button variant="secondary" loading={saving} onClick={()=>handleSave(false)}>💾 Save Draft</Button>
+          <Button variant="secondary" loading={saving} onClick={()=>handleSave(false)}><Save size={18} strokeWidth={1.75} /> Save Draft</Button>
           {step < STEPS.length-1 ? (
             <Button onClick={()=>setStep(s=>s+1)}>Next →</Button>
           ) : (
-            <Button loading={saving} onClick={()=>handleSave(true)}>✅ Submit Project</Button>
+            <Button loading={saving} onClick={()=>handleSave(true)}><CheckCircle size={18} strokeWidth={1.75} /> Submit Project</Button>
           )}
         </div>
       </div>

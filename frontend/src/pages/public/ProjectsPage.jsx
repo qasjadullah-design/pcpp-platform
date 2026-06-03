@@ -53,13 +53,13 @@ export default function ProjectsPage() {
   const resolvedTotal = total || displayProjects.length;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <section className="bg-gradient-to-br from-[#047857] via-[#059669] to-[#10b981] text-white py-16 text-center">
+    <div className="min-h-screen bg-pcpp-mist">
+      <section className="bg-gradient-to-br from-pcpp-pine to-pcpp-emerald text-white py-16 text-center">
         <div className="max-w-4xl mx-auto px-4">
           <p className="text-sm uppercase tracking-wide text-white/80 mb-2">Opportunities</p>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Browse Investment Projects</h1>
           <p className="text-white/80 text-lg">
-            Discover {resolvedTotal}+ verified development projects across Pakistan. Use smart filters to find the right opportunity.
+            Discover {Number(resolvedTotal).toLocaleString()}+ verified development projects across Pakistan. Use smart filters to find the right opportunity.
           </p>
         </div>
       </section>
@@ -68,13 +68,13 @@ export default function ProjectsPage() {
         <div className="sticky top-16 z-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <input
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#059669]"
+              className="flex-1 px-4 py-3 border border-pcpp-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
               placeholder="Search by project name, description, or organization"
               value={filters.search}
               onChange={(e) => handleFilter('search', e.target.value)}
             />
             <select
-              className="px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#059669] bg-white"
+              className="px-4 py-3 border border-pcpp-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-pcpp-emerald bg-white"
               value={filters.sector}
               onChange={(e) => handleFilter('sector', e.target.value === 'All Sectors' ? '' : e.target.value)}
             >
@@ -85,7 +85,7 @@ export default function ProjectsPage() {
               ))}
             </select>
             <select
-              className="px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#059669] bg-white"
+              className="px-4 py-3 border border-pcpp-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-pcpp-emerald bg-white"
               value={filters.region}
               onChange={(e) => handleFilter('region', e.target.value === 'All Provinces' ? '' : e.target.value)}
             >
@@ -96,7 +96,7 @@ export default function ProjectsPage() {
               ))}
             </select>
             <select
-              className="px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#059669] bg-white"
+              className="px-4 py-3 border border-pcpp-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-pcpp-emerald bg-white"
               value={filters.status}
               onChange={(e) => handleFilter('status', e.target.value)}
             >
@@ -114,9 +114,9 @@ export default function ProjectsPage() {
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <p className="text-sm text-gray-600">
-            Showing <strong>{displayProjects.length}</strong> of <strong>{resolvedTotal}</strong> projects
+            Showing <strong>{displayProjects.length.toLocaleString()}</strong> of <strong>{Number(resolvedTotal).toLocaleString()}</strong> projects
           </p>
-          <span className="text-xs text-[#059669] font-semibold">● Verified Projects</span>
+          <span className="text-xs text-pcpp-emerald font-semibold">Verified projects</span>
         </div>
 
         {loading ? (
@@ -145,7 +145,7 @@ export default function ProjectsPage() {
                 key={idx}
                 onClick={() => setFilters((prev) => ({ ...prev, page: idx + 1 }))}
                 className={`w-10 h-10 rounded-lg text-sm font-medium transition ${
-                  filters.page === idx + 1 ? 'bg-[#059669] text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  filters.page === idx + 1 ? 'bg-pcpp-emerald text-white' : 'bg-white border border-pcpp-border text-ink-secondary hover:bg-pcpp-mist'
                 }`}
               >
                 {idx + 1}

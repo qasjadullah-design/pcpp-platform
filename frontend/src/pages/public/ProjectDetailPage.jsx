@@ -11,6 +11,7 @@ import Tooltip from '../../components/common/Tooltip';
 import { STATUS_COLORS, SDG_GOALS, TRL_LEVELS } from '../../utils/constants';
 import { trlText } from '../../utils/trl';
 import toast from 'react-hot-toast';
+import { Building2, ClipboardList, Droplet, Globe2, Landmark, Leaf, Mail, MapPin, Phone, Zap } from 'lucide-react';
 
 const TABS = ['Overview','Financial','Team','Documents','Updates','Gallery'];
 
@@ -77,9 +78,9 @@ export default function ProjectDetailPage() {
         </div>
         <h1 className="text-2xl md:text-3xl font-bold mb-2">{project.title}</h1>
         <div className="flex flex-wrap gap-4 text-sm text-emerald-200 overflow-hidden">
-          {project.district && <span>📍 {project.district}, Pakistan</span>}
-          {project.primary_sector && <span>⚡ {project.primary_sector}</span>}
-          {project.organization_name && <span>🏢 {project.organization_name}</span>}
+          {project.district && <span className="inline-flex items-center gap-1"><MapPin size={16} strokeWidth={1.75} /> {project.district}, Pakistan</span>}
+          {project.primary_sector && <span className="inline-flex items-center gap-1"><Zap size={16} strokeWidth={1.75} /> {project.primary_sector}</span>}
+          {project.organization_name && <span className="inline-flex items-center gap-1"><Building2 size={16} strokeWidth={1.75} /> {project.organization_name}</span>}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           {[
@@ -126,7 +127,7 @@ export default function ProjectDetailPage() {
               )}
               {project.carbon_market_relevant && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                  <h2 className="font-semibold text-gray-900 mb-3">🌱 Carbon-Market Readiness</h2>
+                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Leaf size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Carbon-Market Readiness</h2>
                   <div className="grid md:grid-cols-2 gap-x-6 text-sm">
                     {[
                       ['Standard', project.carbon_standard],
@@ -140,7 +141,7 @@ export default function ProjectDetailPage() {
               )}
               {(project.feasibility_status || project.feasibility_notes || project.feasibility_study_url || project.land_acquired) && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                  <h2 className="font-semibold text-gray-900 mb-3">📋 Feasibility</h2>
+                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><ClipboardList size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Feasibility</h2>
                   <div className="grid md:grid-cols-2 gap-x-6 text-sm mb-3">
                     {[
                       ['Study Status', project.feasibility_status],
@@ -155,14 +156,14 @@ export default function ProjectDetailPage() {
               )}
               {project.mitigation_tco2e != null && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                  <h2 className="font-semibold text-gray-900 mb-3">🌍 Climate Mitigation</h2>
+                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Globe2 size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Climate Mitigation</h2>
                   <p className="text-sm text-gray-700">Estimated emission reduction: <span className="font-semibold text-gray-900">{Number(project.mitigation_tco2e).toLocaleString()} tCO₂e</span> {project.mitigation_basis === 'lifetime' ? '(over project lifetime)' : 'per year'}</p>
                   {project.mitigation_value != null && project.mitigation_unit && <p className="text-xs text-gray-400 mt-1">Entered as {Number(project.mitigation_value).toLocaleString()} {project.mitigation_unit}</p>}
                 </div>
               )}
               {project.wef_nexus?.length > 0 && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                  <h2 className="font-semibold text-gray-900 mb-3">💧 Water-Energy-Food Nexus</h2>
+                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Droplet size={18} strokeWidth={1.75} className="text-pcpp-water" /> Water-Energy-Food Nexus</h2>
                   <div className="flex flex-wrap gap-2">
                     {project.wef_nexus.map(nx => <span key={nx} className="px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 text-xs font-medium">{nx}</span>)}
                   </div>
@@ -170,7 +171,7 @@ export default function ProjectDetailPage() {
               )}
               {(project.line_ministry || project.partners?.length > 0 || project.provincial_contacts?.length > 0) && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                  <h2 className="font-semibold text-gray-900 mb-3">🏛️ Ownership & Partners</h2>
+                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Landmark size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Ownership & Partners</h2>
                   {project.line_ministry && <p className="text-sm mb-3"><span className="text-gray-500">Line Ministry: </span><span className="font-medium text-gray-900">{project.line_ministry}</span></p>}
                   {project.provincial_contacts?.length > 0 && (
                     <div className="mb-3">
@@ -289,8 +290,8 @@ export default function ProjectDetailPage() {
           {(project.project_lead?.email || project.project_lead?.phone) && (
             <div className="bg-white border border-gray-200 rounded-2xl p-5">
               <h3 className="font-semibold text-gray-900 mb-3">Project Contact</h3>
-              {project.project_lead?.email && <p className="text-sm text-gray-600 flex items-center gap-2">📧 {project.project_lead.email}</p>}
-              {project.project_lead?.phone && <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">📞 {project.project_lead.phone}</p>}
+              {project.project_lead?.email && <p className="text-sm text-gray-600 flex items-center gap-2"><Mail size={16} strokeWidth={1.75} /> {project.project_lead.email}</p>}
+              {project.project_lead?.phone && <p className="text-sm text-gray-600 flex items-center gap-2 mt-1"><Phone size={16} strokeWidth={1.75} /> {project.project_lead.phone}</p>}
             </div>
           )}
         </div>
