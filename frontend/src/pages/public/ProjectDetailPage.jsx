@@ -153,6 +153,13 @@ export default function ProjectDetailPage() {
                   {project.feasibility_notes && <p className="text-sm text-gray-600 mt-2 leading-relaxed">{project.feasibility_notes}</p>}
                 </div>
               )}
+              {project.mitigation_tco2e != null && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h2 className="font-semibold text-gray-900 mb-3">🌍 Climate Mitigation</h2>
+                  <p className="text-sm text-gray-700">Estimated emission reduction: <span className="font-semibold text-gray-900">{Number(project.mitigation_tco2e).toLocaleString()} tCO₂e</span> {project.mitigation_basis === 'lifetime' ? '(over project lifetime)' : 'per year'}</p>
+                  {project.mitigation_value != null && project.mitigation_unit && <p className="text-xs text-gray-400 mt-1">Entered as {Number(project.mitigation_value).toLocaleString()} {project.mitigation_unit}</p>}
+                </div>
+              )}
               {project.wef_nexus?.length > 0 && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
                   <h2 className="font-semibold text-gray-900 mb-3">💧 Water-Energy-Food Nexus</h2>

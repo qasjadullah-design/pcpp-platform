@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { SECTORS, PROVINCES, getDistricts, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES } from '../../utils/constants';
+import { SECTORS, PROVINCES, getDistricts, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES, CO2_UNITS, MITIGATION_BASIS, toTco2e } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
@@ -23,6 +23,7 @@ export default function SubmitProjectPage() {
     currency:'PKR', total_cost:'', research_fund:'', equity_fund:'', debt_loan:'', grant_amount:'',
     funding_gap:'', min_investment:'', expected_roi:'', payback_years:'',
     direct_beneficiaries:'', indirect_beneficiaries:'', jobs_created:'',
+    mitigation_value:'', mitigation_unit:'tCO2e', mitigation_basis:'annual',
     carbon_market_relevant:false, carbon_standard:'', carbon_methodology:'', carbon_credit_status:'',
     feasibility_status:'', feasibility_study_url:'', feasibility_notes:'', land_acquired:false,
     organization_name:'', organization_type:'', organization_website:'',
@@ -223,6 +224,16 @@ export default function SubmitProjectPage() {
               <Input label="Indirect Beneficiaries" type="number" placeholder="Number of people" value={form.indirect_beneficiaries} onChange={e=>f('indirect_beneficiaries',e.target.value)} />
               <Input label="Jobs Created" type="number" placeholder="Direct jobs" value={form.jobs_created} onChange={e=>f('jobs_created',e.target.value)} />
             </div>
+
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2 pt-2">🌍 Climate Mitigation (CO₂)</h3>
+            <div className="grid md:grid-cols-3 gap-4">
+              <Input label="Emission Reduction" type="number" placeholder="e.g., 5000" value={form.mitigation_value} onChange={e=>f('mitigation_value',e.target.value)} />
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Unit</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.mitigation_unit} onChange={e=>f('mitigation_unit',e.target.value)}>{CO2_UNITS.map(u=><option key={u.value} value={u.value}>{u.label}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Basis</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.mitigation_basis} onChange={e=>f('mitigation_basis',e.target.value)}>{MITIGATION_BASIS.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}</select></div>
+            </div>
+            {toTco2e(form.mitigation_value, form.mitigation_unit) != null && (
+              <p className="text-xs text-gray-500">≈ <span className="font-medium text-gray-700">{toTco2e(form.mitigation_value, form.mitigation_unit).toLocaleString()} tCO₂e</span> {form.mitigation_basis==='annual'?'per year':'over project lifetime'} (normalized)</p>
+            )}
             <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">9</span> Project Team & Organization</h2>
             <div className="grid md:grid-cols-3 gap-4">
               <Input label="Organization Name *" placeholder="Ministry / Company" value={form.organization_name} onChange={e=>f('organization_name',e.target.value)} />
@@ -297,6 +308,7 @@ export default function SubmitProjectPage() {
                 <p>TRL Level: {form.trl_level || 'Not set'}</p>
                 <p>Carbon Market: {form.carbon_market_relevant ? (form.carbon_standard || 'Relevant') : 'Not relevant'}</p>
                 <p>Feasibility: {form.feasibility_status || 'Not set'}</p>
+                <p>CO₂ Mitigation: {toTco2e(form.mitigation_value, form.mitigation_unit) != null ? `${toTco2e(form.mitigation_value, form.mitigation_unit).toLocaleString()} tCO₂e ${form.mitigation_basis==='annual'?'/yr':'(lifetime)'}` : 'Not set'}</p>
                 <p>WEF Nexus: {form.wef_nexus.length ? form.wef_nexus.join(', ') : 'None'}</p>
                 <p>Line Ministry: {form.line_ministry || 'Not set'}</p>
                 <p>Partners: {form.partners.length} • Contacts: {form.provincial_contacts.length}</p>
