@@ -229,11 +229,14 @@ router.get('/projects/:id/detail', async (req, res) => {
              u.email AS owner_email,
              u.phone AS owner_phone,
              u.role AS owner_role,
+             reviewer.first_name || ' ' || reviewer.last_name AS reviewer_name,
+             reviewer.email AS reviewer_email,
              COALESCE((SELECT COUNT(*) FROM interests i WHERE i.project_id = p.id), 0)::int AS interest_count,
              COALESCE((SELECT COUNT(*) FROM project_documents d WHERE d.project_id = p.id), 0)::int AS document_count,
              COALESCE((SELECT COUNT(*) FROM project_updates pu WHERE pu.project_id = p.id), 0)::int AS update_count
       FROM projects p
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN users reviewer ON p.reviewed_by = reviewer.id
       WHERE p.id = $1
     `, [id]);
 

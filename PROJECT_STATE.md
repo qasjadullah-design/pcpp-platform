@@ -44,6 +44,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add review audit context`
+  - Admin project detail endpoint now returns reviewer name/email.
+  - All Projects drawer now shows Review History when review notes/metadata exist.
+  - Review History includes reviewed by, reviewed at, and existing review notes.
+
 - `latest Align pending review page`
   - `AdminReviewPage.jsx` now uses `adminAPI.getProjects` instead of the public projects API.
   - Pending Review now sends `notes` to the review endpoint instead of `feedback`.
@@ -145,11 +150,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step: add reviewed-by/reviewed-at display in the drawer and/or review page so completed decisions have visible audit context.
+Recommended next step: decide whether to keep Pending Review as a separate queue or convert it into a redirect/workbench preset.
 
-1. Show `reviewed_by`/`reviewed_at` and existing `admin_feedback` in the drawer for reviewed projects.
-2. Consider saved filters if admins need repeatable views beyond quick chips.
-3. Consider whether Pending Review should remain as a queue or become a redirect to All Projects.
+1. If kept, add review history display to the Pending Review modal too.
+2. If retired, redirect `/admin/review` to `/admin/projects` with the Pending Review filter.
+3. Consider saved filters if admins need repeatable views beyond quick chips.
 
 ## 7. Provincial Permission Model - Current Understanding
 

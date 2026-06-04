@@ -272,6 +272,8 @@ export default function AdminProjectsPage() {
   const cellClass = density === 'compact' ? 'px-3 py-2' : 'px-4 py-3';
   const headerClass = `${cellClass} text-xs font-semibold text-gray-500 uppercase`;
   const drawerReviewable = detailProject && ['under_review', 'changes_requested'].includes(detailProject.status);
+  const drawerReviewNotes = detailProject?.admin_feedback || detailProject?.admin_notes;
+  const drawerHasReviewHistory = detailProject && (drawerReviewNotes || detailProject.reviewed_at || detailProject.reviewer_name || detailProject.reviewer_email);
 
   return (
     <div className="p-8">
@@ -553,6 +555,20 @@ export default function AdminProjectsPage() {
                 <section>
                   <h3 className="text-sm font-semibold text-gray-900 mb-2">Abstract</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">{detailProject.abstract}</p>
+                </section>
+              )}
+
+              {drawerHasReviewHistory && (
+                <section className="border border-gray-200 bg-gray-50 rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Review History</h3>
+                  <DetailRow label="Reviewed By" value={detailProject.reviewer_name || detailProject.reviewer_email} />
+                  <DetailRow label="Reviewed At" value={formatDate(detailProject.reviewed_at)} />
+                  {drawerReviewNotes && (
+                    <div className="pt-2">
+                      <div className="text-sm text-gray-500 mb-1">Review Notes</div>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{drawerReviewNotes}</p>
+                    </div>
+                  )}
                 </section>
               )}
 
