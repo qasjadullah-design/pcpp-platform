@@ -13,6 +13,13 @@ const userLinks = [
   { to: '/dashboard/settings', Icon: Settings, label: 'Settings' },
 ];
 
+const investorLinks = [
+  { to: '/dashboard', Icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/projects', Icon: Search, label: 'Browse projects' },
+  { to: '/dashboard/interests', Icon: Send, label: 'My interests' },
+  { to: '/dashboard/settings', Icon: Settings, label: 'Settings' },
+];
+
 const adminLinks = [
   { to: '/admin', Icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc', Icon: RefreshCw, label: 'Pending review' },
@@ -34,11 +41,15 @@ const provincialLinks = [
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const links = user?.role === 'admin' ? adminLinks : user?.role === 'provincial' ? provincialLinks : userLinks;
+  const links = user?.role === 'admin' || user?.role === 'superadmin' ? adminLinks
+    : user?.role === 'provincial' ? provincialLinks
+    : user?.role === 'investor' ? investorLinks
+    : userLinks;
   const searchParams = new URLSearchParams(location.search);
   const adminPendingViewActive = location.pathname === '/admin/projects' && searchParams.get('status') === 'under_review';
-  const portalLabel = user?.role === 'admin' ? 'Admin panel'
+  const portalLabel = user?.role === 'admin' || user?.role === 'superadmin' ? 'Admin panel'
     : user?.role === 'provincial' ? `${user?.province || 'Provincial'} portal`
+    : user?.role === 'investor' ? 'Investor portal'
     : 'User portal';
 
   return (

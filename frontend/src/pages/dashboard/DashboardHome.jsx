@@ -11,22 +11,102 @@ export default function DashboardHome() {
   const [myProjects, setMyProjects] = useState([]);
   const [myInterests, setMyInterests] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState(0);
 
   useEffect(() => {
     // The axios interceptor already unwraps response.data, so `r` IS the body.
-    projectsAPI.getMine().then(r => setMyProjects(Array.isArray(r) ? r : r?.projects || [])).catch(()=>{});
+    if (user?.role !== 'investor') {
+      projectsAPI.getMine().then(r => setMyProjects(Array.isArray(r) ? r : r?.projects || [])).catch(()=>{});
+    }
+    if (user?.role === 'investor') {
+      projectsAPI.getAll({ limit: 1 }).then(r => setAvailableProjects(Number(r?.total) || 0)).catch(()=>{});
+    }
     interestsAPI.getMine().then(r => setMyInterests(Array.isArray(r) ? r : r?.interests || [])).catch(()=>{});
     notificationsAPI.getAll().then(r => setNotifications(Array.isArray(r) ? r : r?.notifications || [])).catch(()=>{});
-  }, []);
+  }, [user?.role]);
 
   const unread = (notifications || []).filter(n => !n.is_read).length;
+  const ownerReplies = myInterests.filter(i => i.status === 'owner_replied').length;
+  const isInvestor = user?.role === 'investor';
 
   const stats = [
     { Icon: Send, value: myInterests.length, label: 'Interests sent' },
     { Icon: FolderOpen, value: myProjects.length, label: 'My projects' },
-    { Icon: Inbox, value: myInterests.filter(i => i.status === 'owner_replied').length, label: 'Interests received' },
+    { Icon: Inbox, value: ownerReplies, label: 'Interests received' },
     { Icon: Bookmark, value: 0, label: 'Saved projects' },
   ];
+
+  if (isInvestor) {
+    const investorStats = [
+      { Icon: Search, value: availableProjects, label: 'Available projects' },
+      { Icon: Send, value: myInterests.length, label: 'Interests sent' },
+      { Icon: Inbox, value: ownerReplies, label: 'Owner replies' },
+      { Icon: Bell, value: unread, label: 'Unread alerts' },
+    ];
+
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <p className="text-sm text-ink-secondary">Investor dashboard</p>
+            <p className="text-xs text-ink-tertiary">Pakistan Country Project Platform</p>
+          </div>
+          <div className="relative">
+            <Bell size={20} strokeWidth={1.75} className="text-ink-secondary" />
+            {unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 bg-status-rejected text-white text-[10px] rounded-full flex items-center justify-center">{unread}</span>}
+          </div>
+        </div>
+
+        <div className="bg-pcpp-emerald text-white rounded-card p-6 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-white/80">Welcome back,</p>
+            <h1 className="text-2xl font-semibold">{user?.first_name} {user?.last_name}</h1>
+            <p className="text-white/80 text-sm">{user?.organization || 'Investor account'}</p>
+          </div>
+          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl font-semibold">{user?.first_name?.[0]}</div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {investorStats.map(({ Icon, value, label }) => (
+            <div key={label} className="bg-pcpp-card rounded-card border border-pcpp-border p-4 flex items-center gap-3">
+              <span className="w-10 h-10 rounded-control bg-pcpp-emerald/10 text-pcpp-emerald flex items-center justify-center"><Icon size={20} strokeWidth={1.75} /></span>
+              <div>
+                <div className="text-2xl font-semibold text-ink tabular-nums">{Number(value).toLocaleString()}</div>
+                <div className="text-xs text-ink-secondary">{label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <Link to="/projects" className="bg-pcpp-card border border-pcpp-border rounded-card p-5 hover:border-pcpp-emerald hover:shadow-sm transition flex items-center gap-4">
+            <span className="w-10 h-10 rounded-control bg-pcpp-emerald/10 text-pcpp-emerald flex items-center justify-center"><Search size={20} strokeWidth={1.75} /></span>
+            <div className="flex-1"><div className="font-medium text-ink">Browse investment opportunities</div><p className="text-xs text-ink-secondary">Review approved projects and express interest</p></div>
+          </Link>
+          <Link to="/dashboard/interests" className="bg-pcpp-card border border-pcpp-border rounded-card p-5 hover:border-pcpp-emerald hover:shadow-sm transition flex items-center gap-4">
+            <span className="w-10 h-10 rounded-control bg-pcpp-emerald/10 text-pcpp-emerald flex items-center justify-center"><Send size={20} strokeWidth={1.75} /></span>
+            <div className="flex-1"><div className="font-medium text-ink">Track my interests</div><p className="text-xs text-ink-secondary">See responses from project owners</p></div>
+          </Link>
+        </div>
+
+        <div className="bg-pcpp-card border border-pcpp-border rounded-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-pcpp-pine">Recent interests</h3>
+            <Link to="/dashboard/interests" className="text-xs text-pcpp-emerald hover:underline">View all â†’</Link>
+          </div>
+          {myInterests.slice(0,5).map(i => (
+            <div key={i.id} className="flex items-center justify-between py-2 border-b border-pcpp-border last:border-0">
+              <div className="flex items-center gap-3"><span className="w-8 h-8 bg-pcpp-emerald/10 text-pcpp-emerald rounded-control flex items-center justify-center"><Building2 size={16} strokeWidth={1.75} /></span>
+                <div><p className="text-sm font-medium text-ink">{i.project_title || i.project?.title}</p><p className="text-xs text-ink-tertiary">{new Date(i.created_at).toLocaleDateString()}</p></div>
+              </div>
+              <Badge label={i.status === 'owner_replied' ? 'Owner replied' : 'Pending'} color={i.status === 'owner_replied' ? 'green' : 'yellow'} />
+            </div>
+          ))}
+          {myInterests.length === 0 && <p className="text-sm text-ink-secondary text-center py-6">No interests yet. <Link to="/projects" className="text-pcpp-emerald hover:underline">Browse projects</Link></p>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

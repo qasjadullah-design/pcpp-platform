@@ -163,6 +163,11 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
 // CREATE project
 router.post('/', authenticate, async (req, res) => {
+  const canSubmitProject = ['admin', 'superadmin', 'project_owner', 'government', 'ngo', 'provincial'].includes(req.user.role);
+  if (!canSubmitProject) {
+    return res.status(403).json({ error: 'Investor accounts can express interest in projects but cannot submit projects.' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

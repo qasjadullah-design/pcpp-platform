@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CheckCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import PcppLogo from '../../components/common/PcppLogo';
 import toast from 'react-hot-toast';
+
+const getRoleHome = (role) => ['admin', 'superadmin'].includes(role) ? '/admin' : '/dashboard';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -17,9 +21,9 @@ export default function RegisterPage() {
     if (!agreed) { toast.error('Please agree to Terms & Privacy Policy'); return; }
     setLoading(true);
     try {
-      await register(form);
+      const res = await register(form);
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      navigate(getRoleHome(res.user.role));
     } catch(e) { toast.error(e.message || 'Registration failed'); }
     finally { setLoading(false); }
   };
@@ -28,23 +32,23 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-purple-700 to-blue-600 text-white flex-col justify-between p-12">
-        <div className="flex items-center gap-2"><div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center font-bold">PC</div><span className="font-bold text-lg">PCPP</span></div>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-pcpp-pine to-pcpp-emerald text-white flex-col justify-between p-12">
+        <PcppLogo variant="dark" />
         <div>
-          <h2 className="text-3xl font-bold mb-4">Join Pakistan's Largest Investment Platform</h2>
-          <p className="text-blue-100 mb-8">Create an account to submit projects, express interest in investments, and connect with organizations across Pakistan.</p>
+          <h2 className="text-3xl font-bold mb-4">Join as an Investor</h2>
+          <p className="text-white/80 mb-8">Create an account to discover approved development projects and express investment interest.</p>
           <div className="space-y-2">
-            {['Submit unlimited project proposals','Connect with verified investors','Track project progress in real-time'].map(t => (
-              <div key={t} className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span>{t}</div>
+            {['Browse verified project opportunities','Express investment interest','Track owner responses'].map(t => (
+              <div key={t} className="flex items-center gap-2 text-sm"><CheckCircle size={16} strokeWidth={1.75} className="text-pcpp-mint" />{t}</div>
             ))}
           </div>
         </div>
-        <div/>
+        <div />
       </div>
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Create Account</h1>
-          <p className="text-sm text-gray-500 mb-8">Join PCPP to submit or invest in projects</p>
+          <p className="text-sm text-gray-500 mb-8">Join PCPP to discover and invest in projects</p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Input label="First Name" placeholder="Ahmed" value={form.first_name} onChange={e=>f('first_name',e.target.value)} required />
@@ -58,7 +62,7 @@ export default function RegisterPage() {
               <input type="checkbox" className="mt-0.5" checked={agreed} onChange={e=>setAgreed(e.target.checked)} />
               I agree to the <Link to="/terms" className="text-emerald-600 hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-emerald-600 hover:underline">Privacy Policy</Link>
             </label>
-            <Button type="submit" className="w-full justify-center" size="lg" loading={loading}>Create Account →</Button>
+            <Button type="submit" className="w-full justify-center" size="lg" loading={loading}>Create Account</Button>
           </form>
           <p className="text-center text-sm text-gray-500 mt-6">Already have an account? <Link to="/login" className="text-emerald-600 font-medium">Sign In</Link></p>
         </div>

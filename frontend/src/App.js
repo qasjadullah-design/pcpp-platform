@@ -30,6 +30,8 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 
 import Spinner from './components/common/Spinner';
 
+const getRoleHome = (role) => ['admin', 'superadmin'].includes(role) ? '/admin' : '/dashboard';
+
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
   if (loading) return <Spinner size="lg"/>;
@@ -46,8 +48,8 @@ const AppRoutes = () => {
       <Route path="/" element={<PublicLayout><HomePage/></PublicLayout>}/>
       <Route path="/projects" element={<PublicLayout><ProjectsPage/></PublicLayout>}/>
       <Route path="/projects/:id" element={<PublicLayout><ProjectDetailPage/></PublicLayout>}/>
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace/> : <LoginPage/>}/>
-      <Route path="/register" element={user ? <Navigate to="/dashboard" replace/> : <RegisterPage/>}/>
+      <Route path="/login" element={user ? <Navigate to={getRoleHome(user.role)} replace/> : <LoginPage/>}/>
+      <Route path="/register" element={user ? <Navigate to={getRoleHome(user.role)} replace/> : <RegisterPage/>}/>
 
       {/* Dashboard Routes */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><DashboardHome/></DashboardLayout></ProtectedRoute>}/>

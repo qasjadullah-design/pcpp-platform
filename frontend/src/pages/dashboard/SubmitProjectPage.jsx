@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
@@ -100,6 +100,18 @@ export default function SubmitProjectPage() {
   useEffect(() => {
     if (isProvincial && user?.province) setForm(p => ({ ...p, province: user.province }));
   }, [isProvincial, user]);
+
+  if (user?.role === 'investor') {
+    return (
+      <div className="p-8">
+        <div className="max-w-2xl bg-pcpp-card border border-pcpp-border rounded-card p-6">
+          <h1 className="text-xl font-semibold text-pcpp-pine mb-2">Project submission is for project owners</h1>
+          <p className="text-sm text-ink-secondary mb-5">Investor accounts can browse approved projects and express investment interest.</p>
+          <Link to="/projects" className="inline-flex items-center justify-center bg-pcpp-emerald text-white px-4 py-2 rounded-control text-sm hover:bg-pcpp-emerald-600">Browse projects</Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleSDG = (id) => {
     setForm(p => ({ ...p, sdg_goals: p.sdg_goals.includes(id) ? p.sdg_goals.filter(x=>x!==id) : [...p.sdg_goals, id] }));

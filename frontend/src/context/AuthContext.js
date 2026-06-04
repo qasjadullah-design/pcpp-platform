@@ -11,8 +11,11 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('bcpp_token');
     if (token) {
       authAPI.getMe()
-        .then(res => setUser(res.user))
-        .catch(() => localStorage.removeItem('bcpp_token'))
+        .then(res => setUser(res))
+        .catch(() => {
+          localStorage.removeItem('bcpp_token');
+          setUser(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

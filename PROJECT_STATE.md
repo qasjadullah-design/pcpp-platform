@@ -44,6 +44,13 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Clarify investor registration flow`
+  - Public `/register` now explicitly creates active `investor` accounts in the backend.
+  - Investor sidebar now focuses on Dashboard, Browse Projects, My Interests, and Settings.
+  - Investor dashboard now shows available projects, interests sent, owner replies, unread alerts, and recent interests.
+  - Investor accounts are blocked from project submission both in the UI and backend project-create route.
+  - Login/register redirects now send admin/superadmin to `/admin`; all other roles go to `/dashboard`.
+
 - `latest Add URL-backed admin project filters`
   - All Projects workbench now reads/writes `search`, `status`, `sector`, `province`, `district`, `priority`, `sort_by`, `sort_dir`, and `page` from the URL query string.
   - Admin dashboard "Review now" and sidebar "Pending review" now open `/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc`.
@@ -153,13 +160,13 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 6. Current Focus / Next Actions
 
-The current UI thread is admin project management polish.
+The current UI thread is registration and role-specific investor experience.
 
-Recommended next step: decide whether to fully retire the legacy Pending Review page or keep it as a lightweight queue.
+Recommended next step: verify the live investor signup/login path on Render, then polish project-interest UX.
 
-1. If retired, redirect `/admin/review` to `/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc`.
-2. If kept, add review history display to the Pending Review modal too.
-3. Consider dashboard/workbench deep links for Approved, Archived, and High Priority views.
+1. Register a test investor from `/register`; confirm DB role is `investor`, status is `active`, and login lands on `/dashboard`.
+2. Express interest in an approved project; confirm `/dashboard/interests` and owner notification update.
+3. Consider adding saved-projects UI because save/toggle backend support already exists, but the investor dashboard currently focuses on interests.
 
 ## 7. Provincial Permission Model - Current Understanding
 

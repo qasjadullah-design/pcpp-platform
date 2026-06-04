@@ -5,6 +5,8 @@ import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import toast from 'react-hot-toast';
 
+const getRoleHome = (role) => ['admin', 'superadmin'].includes(role) ? '/admin' : '/dashboard';
+
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ export default function LoginPage() {
     try {
       const res = await login(form.email, form.password);
       toast.success('Welcome back!');
-      navigate(res.user.role === 'admin' ? '/admin' : '/dashboard');
+      navigate(getRoleHome(res.user.role));
     } catch(e) { toast.error(e.message || 'Login failed'); }
     finally { setLoading(false); }
   };
