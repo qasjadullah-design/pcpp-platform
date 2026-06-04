@@ -44,6 +44,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add admin workbench action safeguards`
+  - Added confirmation modal before bulk approve/archive.
+  - Made All Projects rows open the project detail drawer directly.
+  - Stopped checkbox and row action clicks from opening the drawer accidentally.
+
 - `pending Add admin project detail drawer`
   - Added `GET /api/admin/projects/:id/detail` for admin-only drawer data.
   - Added `adminAPI.getProject`.
@@ -114,12 +119,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step: refine admin review safeguards and table ergonomics now that the drawer exists.
+Recommended next step: improve table density/responsiveness and add any remaining sort fields requested by admins.
 
-1. Add confirmation for bulk archive and possibly bulk approve.
-2. Add sortable title/organization if requested.
-3. Add table density/responsive improvements for smaller screens.
-4. Consider opening the drawer by clicking the row, while keeping checkbox/action clicks isolated.
+1. Add sortable title/organization if requested.
+2. Add table density/responsive improvements for smaller screens.
+3. Consider advanced saved filters or quick chips for common admin views.
 
 ## 7. Provincial Permission Model - Current Understanding
 

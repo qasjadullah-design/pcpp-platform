@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
+import Modal from '../../components/common/Modal';
 import { STATUS_COLORS, SECTORS, PROVINCES, getDistricts, formatCurrency } from '../../utils/constants';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
@@ -12,6 +13,21 @@ const PAGE_SIZE = 25;
 const NEXT_STATUS = {
   under_review: { label: 'Approve', value: 'approved', color: 'bg-emerald-600 hover:bg-emerald-700' },
   approved: { label: 'Archive', value: 'archived', color: 'bg-gray-600 hover:bg-gray-700' },
+};
+
+const BULK_ACTIONS = {
+  approved: {
+    label: 'Approve selected',
+    verb: 'approve',
+    tone: 'emerald',
+    description: 'Approved projects can become visible in public-facing project lists, depending on public filters.',
+  },
+  archived: {
+    label: 'Archive selected',
+    verb: 'archive',
+    tone: 'gray',
+    description: 'Archived projects will be moved out of the active review flow.',
+  },
 };
 
 const getPageNumbers = (currentPage, totalPageCount) => {
@@ -61,6 +77,7 @@ export default function AdminProjectsPage() {
   const [stats, setStats] = useState({ under_review: 0, approved: 0, archived: 0 });
   const [selected, setSelected] = useState(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [pendingBulkStatus, setPendingBulkStatus] = useState('');
   const [detailProject, setDetailProject] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -172,6 +189,7 @@ export default function AdminProjectsPage() {
       toast.error(e.message || 'Bulk action failed');
     } finally {
       setBulkBusy(false);
+      setPendingBulkStatus('');
     }
   };
 
@@ -204,6 +222,7 @@ export default function AdminProjectsPage() {
 
   const handleExportSelected = () => runExport({ ids: Array.from(selected).join(',') });
   const drawerNextStatus = detailProject ? NEXT_STATUS[detailProject.status] : null;
+  const pendingBulkAction = pendingBulkStatus ? BULK_ACTIONS[pendingBulkStatus] : null;
 
   return (
     <div className="p-8">
@@ -262,8 +281,8 @@ export default function AdminProjectsPage() {
         <div className="flex flex-wrap items-center gap-3 mb-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
           <span className="text-sm font-medium text-emerald-900">{selected.size.toLocaleString()} selected</span>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => handleBulkStatus('approved')} disabled={bulkBusy} className="text-xs text-white px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">{bulkBusy ? '...' : 'Approve selected'}</button>
-            <button onClick={() => handleBulkStatus('archived')} disabled={bulkBusy} className="text-xs text-white px-3 py-1.5 rounded-lg bg-gray-600 hover:bg-gray-700 disabled:opacity-50">{bulkBusy ? '...' : 'Archive selected'}</button>
+            <button onClick={() => setPendingBulkStatus('approved')} disabled={bulkBusy} className="text-xs text-white px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">Approve selected</button>
+            <button onClick={() => setPendingBulkStatus('archived')} disabled={bulkBusy} className="text-xs text-white px-3 py-1.5 rounded-lg bg-gray-600 hover:bg-gray-700 disabled:opacity-50">Archive selected</button>
             <button onClick={handleExportSelected} disabled={exporting} className="text-xs border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-white disabled:opacity-50">Export selected</button>
           </div>
           <button onClick={clearSelection} className="text-xs text-gray-500 hover:text-gray-700 ml-auto">Clear selection</button>
@@ -296,8 +315,8 @@ export default function AdminProjectsPage() {
               {projects.map(p => {
                 const next = NEXT_STATUS[p.status];
                 return (
-                  <tr key={p.id} className={`border-b border-gray-100 hover:bg-gray-50 ${selected.has(p.id) ? 'bg-emerald-50/50' : ''}`}>
-                    <td className="px-4 py-3">
+                  <tr key={p.id} onClick={() => openDetailDrawer(p)} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${selected.has(p.id) ? 'bg-emerald-50/50' : ''}`}>
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={`Select ${p.title}`} />
                     </td>
                     <td className="px-4 py-3"><div className="font-medium text-gray-900">{p.title}</div><div className="text-xs text-gray-400">ID: {p.id.slice(0,8)}</div></td>
@@ -307,7 +326,7 @@ export default function AdminProjectsPage() {
                     <td className="px-4 py-3"><Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status]||'gray'} dot/></td>
                     <td className="px-4 py-3 text-gray-600">{formatCurrency(p.total_cost)}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(p.created_at)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button onClick={() => openDetailDrawer(p)} className="text-xs border border-emerald-200 text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-50">Details</button>
                         <Link to={`/projects/${p.id}`} className="text-xs border border-gray-300 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50">View</Link>
@@ -468,6 +487,27 @@ export default function AdminProjectsPage() {
           </aside>
         </div>
       )}
+
+      <Modal isOpen={!!pendingBulkAction} onClose={() => setPendingBulkStatus('')} title={`${pendingBulkAction?.label || 'Confirm action'}?`}>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            You are about to {pendingBulkAction?.verb} <span className="font-semibold text-gray-900">{selected.size.toLocaleString()}</span> selected project{selected.size === 1 ? '' : 's'}.
+          </p>
+          <p className="text-sm text-gray-500">{pendingBulkAction?.description}</p>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button onClick={() => setPendingBulkStatus('')} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
+              Cancel
+            </button>
+            <button
+              onClick={() => handleBulkStatus(pendingBulkStatus)}
+              disabled={bulkBusy}
+              className={`px-4 py-2 text-white rounded-lg text-sm disabled:opacity-50 ${pendingBulkAction?.tone === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-700 hover:bg-gray-800'}`}
+            >
+              {bulkBusy ? 'Working...' : pendingBulkAction?.label}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
