@@ -8,6 +8,8 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -16,12 +18,25 @@ app.use(cors({
 }));
 
 // Rate limiting
-const limiter = rateLimit({
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: parseInt(process.env.API_RATE_LIMIT_MAX, 10) || 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
 });
-app.use('/api/', limiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 50,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please wait a few minutes and try again.' }
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/', apiLimiter);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

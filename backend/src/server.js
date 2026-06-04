@@ -12,6 +12,8 @@ const logger = require('./utils/logger');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Connect Database
 connectDB();
 
@@ -21,8 +23,25 @@ app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(compression());
 
 // Rate Limiting
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: 'Too many requests' });
-app.use('/api', limiter);
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.API_RATE_LIMIT_MAX, 10) || 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 50,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please wait a few minutes and try again.' },
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api', apiLimiter);
 
 // Body Parser
 app.use(express.json({ limit: '10mb' }));

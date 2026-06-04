@@ -44,6 +44,12 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Relax Render API rate limiting`
+  - Both backend entrypoints now set `trust proxy` for Render/proxy IP handling.
+  - Global API limit raised from 100/15min to env-configurable `API_RATE_LIMIT_MAX` defaulting to 1000.
+  - Login has a separate env-configurable `AUTH_RATE_LIMIT_MAX` defaulting to 50/15min.
+  - Successful login requests are not counted against the auth limiter.
+
 - `latest Clarify investor registration flow`
   - Public `/register` now explicitly creates active `investor` accounts in the backend.
   - Investor sidebar now focuses on Dashboard, Browse Projects, My Interests, and Settings.
