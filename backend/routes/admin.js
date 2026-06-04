@@ -121,23 +121,30 @@ router.get('/pending', async (req, res) => {
 router.put('/projects/:id/review', async (req, res) => {
   try {
     const { id } = req.params;
-    const { action, notes } = req.body;
+    const { action, notes, feedback } = req.body;
+    const reviewNotes = notes ?? feedback ?? null;
 
     const validActions = { approve: 'approved', reject: 'rejected', request_changes: 'changes_requested' };
     if (!validActions[action]) return res.status(400).json({ error: 'Invalid action' });
 
     const result = await pool.query(`
-      UPDATE projects SET status = $1, admin_notes = $2, updated_at = NOW()
-      WHERE id = $3 RETURNING *, (SELECT user_id FROM projects WHERE id = $3) AS user_id
-    `, [validActions[action], notes, id]);
+      UPDATE projects
+      SET status = $1,
+          admin_notes = $2,
+          admin_feedback = $2,
+          reviewed_by = $3,
+          reviewed_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $4 RETURNING *, (SELECT user_id FROM projects WHERE id = $4) AS user_id
+    `, [validActions[action], reviewNotes, req.user.id, id]);
 
     if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' });
 
     // Notify owner
     const messages = {
       approve: { title: 'Project approved', msg: `Your project "${result.rows[0].title}" has been approved and is now live.`, type: 'success' },
-      reject: { title: 'Project Review Update', msg: `Your project "${result.rows[0].title}" was not approved. Notes: ${notes}`, type: 'error' },
-      request_changes: { title: 'Changes Requested', msg: `Please review and update your project "${result.rows[0].title}". Notes: ${notes}`, type: 'warning' }
+      reject: { title: 'Project Review Update', msg: `Your project "${result.rows[0].title}" was not approved. Notes: ${reviewNotes || 'No notes provided.'}`, type: 'error' },
+      request_changes: { title: 'Changes Requested', msg: `Please review and update your project "${result.rows[0].title}". Notes: ${reviewNotes || 'No notes provided.'}`, type: 'warning' }
     };
 
     await pool.query(`

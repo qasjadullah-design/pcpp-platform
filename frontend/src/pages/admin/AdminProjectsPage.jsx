@@ -6,7 +6,7 @@ import Modal from '../../components/common/Modal';
 import { STATUS_COLORS, SECTORS, PROVINCES, getDistricts, formatCurrency } from '../../utils/constants';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ExternalLink, FolderOpen, MapPin, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, CheckCircle, ExternalLink, FolderOpen, MapPin, RotateCw, X, XCircle } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
@@ -36,6 +36,12 @@ const QUICK_FILTERS = [
   { label: 'Approved', status: 'approved', priority: '' },
   { label: 'Archived', status: 'archived', priority: '' },
   { label: 'High Priority', status: '', priority: 'high_or_critical' },
+];
+
+const DRAWER_REVIEW_ACTIONS = [
+  { action: 'approve', label: 'Approve', Icon: CheckCircle, className: 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600' },
+  { action: 'request_changes', label: 'Request Changes', Icon: RotateCw, className: 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' },
+  { action: 'reject', label: 'Reject', Icon: XCircle, className: 'bg-red-600 hover:bg-red-700 text-white border-red-600' },
 ];
 
 const getPageNumbers = (currentPage, totalPageCount) => {
@@ -89,6 +95,8 @@ export default function AdminProjectsPage() {
   const [pendingBulkStatus, setPendingBulkStatus] = useState('');
   const [detailProject, setDetailProject] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewBusy, setReviewBusy] = useState('');
 
   const fetchProjects = () => {
     setLoading(true);
@@ -146,10 +154,12 @@ export default function AdminProjectsPage() {
 
   const openDetailDrawer = async (project) => {
     setDetailProject(project);
+    setReviewNotes('');
     setDetailLoading(true);
     try {
       const detail = await adminAPI.getProject(project.id);
       setDetailProject(detail);
+      setReviewNotes(detail.admin_feedback || detail.admin_notes || '');
     } catch (e) {
       toast.error(e.message || 'Failed to load project details');
     } finally {
@@ -158,6 +168,27 @@ export default function AdminProjectsPage() {
   };
 
   const closeDetailDrawer = () => setDetailProject(null);
+
+  const handleDrawerReview = async (action) => {
+    if (!detailProject) return;
+    if (['reject', 'request_changes'].includes(action) && !reviewNotes.trim()) {
+      toast.error('Please add review notes before sending this action');
+      return;
+    }
+
+    setReviewBusy(action);
+    try {
+      const reviewed = await adminAPI.reviewProject(detailProject.id, { action, notes: reviewNotes });
+      const nextProject = reviewed?.data || reviewed;
+      setDetailProject(p => ({ ...p, ...nextProject }));
+      toast.success(`Project ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'sent back for changes'}`);
+      fetchProjects();
+    } catch (e) {
+      toast.error(e.message || 'Failed to submit review');
+    } finally {
+      setReviewBusy('');
+    }
+  };
 
   const handleProvinceChange = (province) => {
     setFilters(f => ({ ...f, province, district: '', page: 1 }));
@@ -236,10 +267,11 @@ export default function AdminProjectsPage() {
   };
 
   const handleExportSelected = () => runExport({ ids: Array.from(selected).join(',') });
-  const drawerNextStatus = detailProject ? NEXT_STATUS[detailProject.status] : null;
+  const drawerNextStatus = detailProject?.status === 'approved' ? NEXT_STATUS[detailProject.status] : null;
   const pendingBulkAction = pendingBulkStatus ? BULK_ACTIONS[pendingBulkStatus] : null;
   const cellClass = density === 'compact' ? 'px-3 py-2' : 'px-4 py-3';
   const headerClass = `${cellClass} text-xs font-semibold text-gray-500 uppercase`;
+  const drawerReviewable = detailProject && ['under_review', 'changes_requested'].includes(detailProject.status);
 
   return (
     <div className="p-8">
@@ -521,6 +553,34 @@ export default function AdminProjectsPage() {
                 <section>
                   <h3 className="text-sm font-semibold text-gray-900 mb-2">Abstract</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">{detailProject.abstract}</p>
+                </section>
+              )}
+
+              {drawerReviewable && (
+                <section className="border border-yellow-200 bg-yellow-50 rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Review Decision</h3>
+                  <textarea
+                    rows={4}
+                    className="w-full px-3 py-2 border border-yellow-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    placeholder="Add notes for the project owner or internal review record..."
+                    value={reviewNotes}
+                    onChange={e => setReviewNotes(e.target.value)}
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                    {DRAWER_REVIEW_ACTIONS.map(({ action, label, Icon, className }) => (
+                      <button
+                        key={action}
+                        type="button"
+                        onClick={() => handleDrawerReview(action)}
+                        disabled={!!reviewBusy}
+                        className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium disabled:opacity-50 ${className}`}
+                      >
+                        <Icon size={16} strokeWidth={1.75} />
+                        {reviewBusy === action ? 'Working...' : label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-yellow-700 mt-2">Reject and Request Changes require notes before submission.</p>
                 </section>
               )}
             </div>

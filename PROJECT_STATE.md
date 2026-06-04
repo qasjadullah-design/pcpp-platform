@@ -44,6 +44,13 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add drawer review workflow`
+  - Detail drawer now shows a Review Decision panel for `under_review` and `changes_requested` projects.
+  - Drawer supports Approve, Request Changes, and Reject with notes.
+  - Reject and Request Changes require notes before submission.
+  - Backend review route now accepts both `notes` and legacy `feedback`.
+  - Backend review route stores `admin_notes`, `admin_feedback`, `reviewed_by`, and `reviewed_at`.
+
 - `latest Add admin project quick filters`
   - Added quick filter chips for All Projects, Pending Review, Approved, Archived, and High Priority.
   - High Priority includes both `high` and `critical` priority levels.
@@ -132,10 +139,10 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step: improve admin review notes/actions if the approval workflow needs more audit detail.
+Recommended next step: unify or retire the separate Pending Review page if the All Projects drawer review workflow is now preferred.
 
-1. Add a review-notes panel in the detail drawer for under-review projects.
-2. Consider request-changes/reject actions from the drawer if admins need the full review flow there.
+1. Update `AdminReviewPage.jsx` to use `notes` consistently, or redirect reviewers to All Projects with the Pending Review chip.
+2. Consider adding reviewed-by/reviewed-at display in the drawer after a decision.
 3. Consider saved filters if admins need repeatable views beyond quick chips.
 
 ## 7. Provincial Permission Model - Current Understanding
