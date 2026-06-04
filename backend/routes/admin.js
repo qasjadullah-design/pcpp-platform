@@ -151,10 +151,69 @@ router.put('/projects/:id/review', async (req, res) => {
   }
 });
 
+// Valid project status values (DB enum)
+const VALID_STATUSES = [
+  'draft', 'under_review', 'approved', 'rejected',
+  'changes_requested', 'under_implementation', 'completed', 'archived'
+];
+
+const PROJECT_SORT_COLUMNS = {
+  created_at: 'p.created_at',
+  total_cost: 'p.total_cost',
+  province: 'p.province',
+  primary_sector: 'p.primary_sector',
+  status: 'p.status',
+};
+
+const projectOrderBy = (sortBy = 'created_at', sortDir = 'desc') => {
+  const column = PROJECT_SORT_COLUMNS[sortBy] || PROJECT_SORT_COLUMNS.created_at;
+  const direction = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  return `${column} ${direction} NULLS LAST, p.created_at DESC`;
+};
+
+// Change a single project's status (powers the inline Approve/Archive buttons)
+router.put('/projects/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!VALID_STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+    const result = await pool.query(
+      `UPDATE projects SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      [status, id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' });
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to change project status' });
+  }
+});
+
+// Bulk status change for selected projects (bulk approve / archive / etc.)
+router.put('/projects/bulk-status', async (req, res) => {
+  try {
+    const { ids, status } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'No projects selected' });
+    if (!VALID_STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+    const result = await pool.query(
+      `UPDATE projects SET status = $1, updated_at = NOW() WHERE id = ANY($2::uuid[]) RETURNING id`,
+      [status, ids]
+    );
+
+    res.json({ updated: result.rowCount, ids: result.rows.map(r => r.id) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to bulk update projects' });
+  }
+});
+
 // GET all projects (admin)
 router.get('/projects', async (req, res) => {
   try {
-    const { status, sector, province, district, search, page = 1, limit = 15 } = req.query;
+    const { status, sector, province, district, search, sort_by = 'created_at', sort_dir = 'desc', page = 1, limit = 15 } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
@@ -171,6 +230,7 @@ router.get('/projects', async (req, res) => {
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    const orderBy = projectOrderBy(sort_by, sort_dir);
 
     const [projects, count] = await Promise.all([
       pool.query(`
@@ -178,7 +238,7 @@ router.get('/projects', async (req, res) => {
                p.total_cost, p.trl_level, p.created_at, p.priority_level, p.risk_level, p.organization_name,
                u.first_name || ' ' || u.last_name AS owner_name, u.email AS owner_email
         FROM projects p LEFT JOIN users u ON p.user_id = u.id
-        ${where} ORDER BY p.created_at DESC LIMIT $${idx} OFFSET $${idx + 1}
+        ${where} ORDER BY ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}
       `, [...params, parseInt(limit), offset]),
       pool.query(`SELECT COUNT(*) FROM projects p ${where}`, params)
     ]);
@@ -202,10 +262,14 @@ router.get('/projects', async (req, res) => {
 // Export projects to Excel
 router.get('/projects/export', async (req, res) => {
   try {
-    const { status, sector, province, district, search } = req.query;
+    const { status, sector, province, district, search, ids, sort_by = 'created_at', sort_dir = 'desc' } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
+
+    // When ids are supplied (Export selected), restrict to just those projects
+    const idList = ids ? String(ids).split(',').filter(Boolean) : [];
+    if (idList.length) { conditions.push(`p.id = ANY($${idx++}::uuid[])`); params.push(idList); }
 
     if (status && status !== 'all') { conditions.push(`p.status = $${idx++}`); params.push(status); }
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
@@ -218,6 +282,7 @@ router.get('/projects/export', async (req, res) => {
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const orderBy = projectOrderBy(sort_by, sort_dir);
 
     const result = await pool.query(`
       SELECT p.project_code, p.title, p.primary_sector, p.province, p.district, p.city, p.status,
@@ -226,7 +291,7 @@ router.get('/projects/export', async (req, res) => {
              p.created_at, u.email AS owner_email
       FROM projects p LEFT JOIN users u ON p.user_id = u.id
       ${where}
-      ORDER BY p.created_at DESC
+      ORDER BY ${orderBy}
     `, params);
 
     const workbook = new ExcelJS.Workbook();
