@@ -159,6 +159,8 @@ const VALID_STATUSES = [
 
 const PROJECT_SORT_COLUMNS = {
   created_at: 'p.created_at',
+  title: 'p.title',
+  organization_name: 'p.organization_name',
   total_cost: 'p.total_cost',
   province: 'p.province',
   primary_sector: 'p.primary_sector',

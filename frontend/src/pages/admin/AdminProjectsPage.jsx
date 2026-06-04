@@ -72,6 +72,7 @@ export default function AdminProjectsPage() {
   const [changing, setChanging] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState({ search:'', status:'', sector:'', province:'', district:'', sort_by:'created_at', sort_dir:'desc', page:1 });
+  const [density, setDensity] = useState('comfortable');
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [stats, setStats] = useState({ under_review: 0, approved: 0, archived: 0 });
@@ -167,7 +168,7 @@ export default function AdminProjectsPage() {
     const active = filters.sort_by === sortBy;
     const Icon = active ? (filters.sort_dir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
     return (
-      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
+      <th className={`text-left ${density === 'compact' ? 'px-3 py-2' : 'px-4 py-3'} text-xs font-semibold text-gray-500 uppercase`}>
         <button type="button" onClick={() => handleSort(sortBy)} className={`inline-flex items-center gap-1.5 ${active ? 'text-emerald-700' : 'hover:text-gray-700'}`}>
           {label}
           <Icon size={14} strokeWidth={1.75} />
@@ -223,6 +224,8 @@ export default function AdminProjectsPage() {
   const handleExportSelected = () => runExport({ ids: Array.from(selected).join(',') });
   const drawerNextStatus = detailProject ? NEXT_STATUS[detailProject.status] : null;
   const pendingBulkAction = pendingBulkStatus ? BULK_ACTIONS[pendingBulkStatus] : null;
+  const cellClass = density === 'compact' ? 'px-3 py-2' : 'px-4 py-3';
+  const headerClass = `${cellClass} text-xs font-semibold text-gray-500 uppercase`;
 
   return (
     <div className="p-8">
@@ -273,6 +276,18 @@ export default function AdminProjectsPage() {
             <option value="">{filters.province ? 'All Districts' : 'Select Province First'}</option>
             {districtOptions.map(d=><option key={d} value={d}>{d}</option>)}
           </select>
+          <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden">
+            {['comfortable','compact'].map(mode => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setDensity(mode)}
+                className={`px-3 py-2 text-sm capitalize ${density === mode ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -291,24 +306,25 @@ export default function AdminProjectsPage() {
 
       {loading ? <Spinner/> : (
         <div className="bg-white border rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 text-sm text-gray-500">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 text-sm text-gray-500">
             <span>Showing {projects.length.toLocaleString()} of {total.toLocaleString()} projects</span>
             <span>Page {filters.page.toLocaleString()} of {totalPages.toLocaleString()}</span>
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className={`w-full min-w-[1180px] text-sm ${density === 'compact' ? 'text-xs' : ''}`}>
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 w-10">
+                <th className={`${cellClass} w-10`}>
                   <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" checked={allPageSelected} onChange={toggleAllOnPage} aria-label="Select all on page" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Project</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Organization</th>
+                {renderSortableHeader('Project','title')}
+                {renderSortableHeader('Organization','organization_name')}
                 {renderSortableHeader('Sector','primary_sector')}
                 {renderSortableHeader('Province','province')}
                 {renderSortableHeader('Status','status')}
                 {renderSortableHeader('Cost','total_cost')}
                 {renderSortableHeader('Created','created_at')}
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                <th className={`text-left ${headerClass}`}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -316,17 +332,17 @@ export default function AdminProjectsPage() {
                 const next = NEXT_STATUS[p.status];
                 return (
                   <tr key={p.id} onClick={() => openDetailDrawer(p)} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${selected.has(p.id) ? 'bg-emerald-50/50' : ''}`}>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <td className={cellClass} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={`Select ${p.title}`} />
                     </td>
-                    <td className="px-4 py-3"><div className="font-medium text-gray-900">{p.title}</div><div className="text-xs text-gray-400">ID: {p.id.slice(0,8)}</div></td>
-                    <td className="px-4 py-3 text-gray-600">{p.organization_name}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.primary_sector}</td>
-                    <td className="px-4 py-3 text-gray-600"><div>{p.province || 'Unspecified'}</div><div className="text-xs text-gray-400">{p.district || 'No district'}</div></td>
-                    <td className="px-4 py-3"><Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status]||'gray'} dot/></td>
-                    <td className="px-4 py-3 text-gray-600">{formatCurrency(p.total_cost)}</td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(p.created_at)}</td>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <td className={cellClass}><div className="font-medium text-gray-900 leading-snug">{p.title}</div><div className="text-xs text-gray-400">ID: {p.id.slice(0,8)}</div></td>
+                    <td className={`${cellClass} text-gray-600`}>{p.organization_name}</td>
+                    <td className={`${cellClass} text-gray-600`}>{p.primary_sector}</td>
+                    <td className={`${cellClass} text-gray-600`}><div>{p.province || 'Unspecified'}</div><div className="text-xs text-gray-400">{p.district || 'No district'}</div></td>
+                    <td className={cellClass}><Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status]||'gray'} dot/></td>
+                    <td className={`${cellClass} text-gray-600 whitespace-nowrap`}>{formatCurrency(p.total_cost)}</td>
+                    <td className={`${cellClass} text-gray-600 whitespace-nowrap`}>{formatDate(p.created_at)}</td>
+                    <td className={cellClass} onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button onClick={() => openDetailDrawer(p)} className="text-xs border border-emerald-200 text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-50">Details</button>
                         <Link to={`/projects/${p.id}`} className="text-xs border border-gray-300 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50">View</Link>
@@ -346,7 +362,8 @@ export default function AdminProjectsPage() {
               })}
             </tbody>
           </table>
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-100">
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-gray-100">
             <button
               onClick={() => setFilters(f => ({ ...f, page: 1 }))}
               disabled={filters.page <= 1}

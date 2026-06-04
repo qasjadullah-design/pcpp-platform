@@ -44,6 +44,13 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Improve admin project table density`
+  - Added Title and Organization to the safe backend sort whitelist.
+  - Made Project and Organization sortable columns.
+  - Added Comfortable/Compact density toggle on All Projects.
+  - Added horizontal table scrolling with a stable minimum table width for smaller screens.
+  - Tightened table padding in compact mode while preserving the existing drawer/actions workflow.
+
 - `latest Add admin workbench action safeguards`
   - Added confirmation modal before bulk approve/archive.
   - Made All Projects rows open the project detail drawer directly.
@@ -119,11 +126,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step: improve table density/responsiveness and add any remaining sort fields requested by admins.
+Recommended next step: consider saved filter/view presets for common admin workflows.
 
-1. Add sortable title/organization if requested.
-2. Add table density/responsive improvements for smaller screens.
-3. Consider advanced saved filters or quick chips for common admin views.
+1. Add quick chips such as Pending Review, Approved, Archived, High Priority, and Province-selected.
+2. Consider saved filters if admins need repeatable views.
+3. Improve admin review notes/actions if the approval workflow needs more audit detail.
 
 ## 7. Provincial Permission Model - Current Understanding
 
