@@ -44,6 +44,15 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `0933a0e Enhance admin project workbench`
+  - Added backend single-project status route for inline approve/archive.
+  - Added backend bulk status route for selected projects.
+  - Added frontend row selection, select-all-on-page, bulk approve/archive, and export selected.
+  - Added cascading District filter after Province on All Projects.
+  - Added safe backend sort whitelist and server-side sort params for project list/export.
+  - Added sortable table headers for Sector, Province, Status, Cost, and Created.
+  - Added Created date column and district text under Province.
+
 - `5917f8e Add province filter and numbered project pagination`
   - Added Province filter to All Projects.
   - Backend `/api/admin/projects` now accepts `province`.
@@ -98,19 +107,15 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step after pagination: turn All Projects into a stronger admin workbench:
+Recommended next step: add a compact project detail drawer so admins can inspect and act without leaving All Projects.
 
-1. Add row multi-select and bulk actions:
-   - bulk approve
-   - bulk archive
-   - export selected
-2. Add a compact project detail drawer:
+1. Add a compact project detail drawer:
    - open without leaving All Projects
    - show owner, province/district, costs, status, TRL, risk, priority, dates
    - quick approve/archive actions
-3. Add district filter that cascades from selected province.
-4. Add sortable columns for Created Date, Cost, Status, Province, Sector.
-5. Consider table density/responsive improvements after the workflow pieces are done.
+2. Add sortable title/organization if requested.
+3. Add table density/responsive improvements after the drawer workflow is stable.
+4. Consider a confirmation step for bulk archive if admins will handle large selected sets.
 
 ## 7. Provincial Permission Model - Current Understanding
 
