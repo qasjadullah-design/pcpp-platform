@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { projectsAPI, adminAPI } from '../../services/api';
+import { Link } from 'react-router-dom';
+import { adminAPI } from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
@@ -12,23 +13,36 @@ export default function AdminReviewPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [action, setAction] = useState('');
-  const [feedback, setFeedback] = useState('');
+  const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
  useEffect(() => {
-  projectsAPI.getAll({ status: 'under_review', limit: 20 })
+  adminAPI.getProjects({ status: 'under_review', sort_by: 'created_at', sort_dir: 'asc', limit: 20 })
     .then(r => setProjects(r.projects || [])).catch(()=>{}).finally(()=>setLoading(false));
 }, []);
 
   const handleReview = async () => {
+    if (['reject', 'request_changes'].includes(action) && !notes.trim()) {
+      toast.error('Please add review notes before sending this action');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await adminAPI.reviewProject(selected.id, { action, feedback });
-      toast.success(`Project ${action}d successfully!`);
+      await adminAPI.reviewProject(selected.id, { action, notes });
+      toast.success(action === 'approve' ? 'Project approved successfully!' : action === 'reject' ? 'Project rejected successfully!' : 'Changes requested successfully!');
       setProjects(p => p.filter(x => x.id !== selected.id));
       setSelected(null);
+      setAction('');
+      setNotes('');
     } catch(e) { toast.error(e.message||'Failed'); }
     finally { setSubmitting(false); }
+  };
+
+  const openReview = (project, nextAction = '') => {
+    setSelected(project);
+    setAction(nextAction);
+    setNotes(project.admin_feedback || project.admin_notes || '');
   };
 
   return (
@@ -38,10 +52,13 @@ export default function AdminReviewPage() {
           <h1 className="text-2xl font-bold text-gray-900">Pending Review</h1>
           <p className="text-sm text-gray-500">{projects.length.toLocaleString()} projects waiting for your approval</p>
         </div>
-        <div className="flex gap-2 text-xs">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>Urgent (&lt;3 hrs)</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block"/>Medium (3-12 hrs)</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>Normal (&gt;12 hrs)</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-2 text-xs">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>Urgent (&lt;3 hrs)</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block"/>Medium (3-12 hrs)</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>Normal (&gt;12 hrs)</span>
+          </div>
+          <Link to="/admin/projects" className="text-sm border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-50">Open review workbench</Link>
         </div>
       </div>
 
@@ -74,8 +91,8 @@ export default function AdminReviewPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={()=>{setSelected(p);setAction('');setFeedback('');}} className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">Quick Preview</button>
-                    <button onClick={()=>{setSelected(p);setAction('approve');setFeedback('');}} className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700">Start Review</button>
+                    <button onClick={()=>openReview(p)} className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50">Quick Preview</button>
+                    <button onClick={()=>openReview(p, 'approve')} className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700">Start Review</button>
                   </div>
                 </div>
               </div>
@@ -103,7 +120,8 @@ export default function AdminReviewPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Feedback / Notes</label>
-              <textarea rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Provide detailed feedback to the project owner..." value={feedback} onChange={e=>setFeedback(e.target.value)}/>
+              <textarea rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Provide detailed feedback to the project owner..." value={notes} onChange={e=>setNotes(e.target.value)}/>
+              <p className="text-xs text-gray-500 mt-1">Reject and Request Changes require notes before submission.</p>
             </div>
             <Button className="w-full justify-center" disabled={!action} loading={submitting} onClick={handleReview}>Submit Review</Button>
           </div>
