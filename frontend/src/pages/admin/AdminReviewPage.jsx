@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { Building2, CheckCircle, Clock, RotateCw, XCircle } from 'lucide-react';
 import { formatCurrency } from '../../utils/constants';
 
+const pendingReviewPath = '/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc';
+
 export default function AdminReviewPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ export default function AdminReviewPage() {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block"/>Medium (3-12 hrs)</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>Normal (&gt;12 hrs)</span>
           </div>
-          <Link to="/admin/projects" className="text-sm border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-50">Open review workbench</Link>
+          <Link to={pendingReviewPath} className="text-sm border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-50">Open review workbench</Link>
         </div>
       </div>
 

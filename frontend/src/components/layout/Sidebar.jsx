@@ -15,7 +15,7 @@ const userLinks = [
 
 const adminLinks = [
   { to: '/admin', Icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/review', Icon: RefreshCw, label: 'Pending review' },
+  { to: '/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc', Icon: RefreshCw, label: 'Pending review' },
   { to: '/admin/projects', Icon: FolderOpen, label: 'All projects' },
   { to: '/admin/users', Icon: Users, label: 'All users' },
   { to: '/admin/analytics', Icon: BarChart3, label: 'Analytics' },
@@ -35,6 +35,8 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const links = user?.role === 'admin' ? adminLinks : user?.role === 'provincial' ? provincialLinks : userLinks;
+  const searchParams = new URLSearchParams(location.search);
+  const adminPendingViewActive = location.pathname === '/admin/projects' && searchParams.get('status') === 'under_review';
   const portalLabel = user?.role === 'admin' ? 'Admin panel'
     : user?.role === 'provincial' ? `${user?.province || 'Provincial'} portal`
     : 'User portal';
@@ -48,7 +50,10 @@ export default function Sidebar() {
       <nav className="flex-1 p-4 space-y-1">
         <div className="text-[11px] text-white/40 font-medium mb-3 px-3">Main menu</div>
         {links.map(({ to, Icon, label }) => {
-          const active = location.pathname === to;
+          const targetPath = to.split('?')[0];
+          const active = to.includes('?')
+            ? adminPendingViewActive
+            : location.pathname === targetPath && !(targetPath === '/admin/projects' && adminPendingViewActive);
           return (
             <Link key={to} to={to} className={`flex items-center gap-3 px-3 py-2.5 rounded-control text-sm font-medium transition-colors ${active ? 'bg-pcpp-emerald text-white' : 'text-white/70 hover:bg-pcpp-pine-700 hover:text-white'}`}>
               <Icon size={18} strokeWidth={1.75} />{label}

@@ -26,6 +26,7 @@ function buildLifecycle(statusStats = []) {
 
 const num = (v) => (Number(v) || 0).toLocaleString();
 const billions = (v) => (v ? `Rs. ${(Number(v) / 1e9).toFixed(1)}B` : '—');
+const pendingReviewPath = '/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc';
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
@@ -96,7 +97,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-ink-secondary">{num(data?.pending_review)} projects are waiting for your review.</p>
             </div>
           </div>
-          <Link to="/admin/review" className="bg-pcpp-harvest text-white px-4 py-2 rounded-control text-sm hover:opacity-90">Review now →</Link>
+          <Link to={pendingReviewPath} className="bg-pcpp-harvest text-white px-4 py-2 rounded-control text-sm hover:opacity-90">Review now →</Link>
         </div>
       )}
 

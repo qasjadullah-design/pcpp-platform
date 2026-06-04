@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
@@ -9,6 +9,18 @@ import toast from 'react-hot-toast';
 import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, CheckCircle, ExternalLink, FolderOpen, MapPin, RotateCw, X, XCircle } from 'lucide-react';
 
 const PAGE_SIZE = 25;
+
+const DEFAULT_FILTERS = {
+  search: '',
+  status: '',
+  sector: '',
+  province: '',
+  district: '',
+  priority: '',
+  sort_by: 'created_at',
+  sort_dir: 'desc',
+  page: 1,
+};
 
 const NEXT_STATUS = {
   under_review: { label: 'Approve', value: 'approved', color: 'bg-emerald-600 hover:bg-emerald-700' },
@@ -57,6 +69,33 @@ const getPageNumbers = (currentPage, totalPageCount) => {
   return pages;
 };
 
+const getFiltersFromSearchParams = (searchParams) => ({
+  ...DEFAULT_FILTERS,
+  search: searchParams.get('search') || '',
+  status: searchParams.get('status') || '',
+  sector: searchParams.get('sector') || '',
+  province: searchParams.get('province') || '',
+  district: searchParams.get('district') || '',
+  priority: searchParams.get('priority') || '',
+  sort_by: searchParams.get('sort_by') || DEFAULT_FILTERS.sort_by,
+  sort_dir: searchParams.get('sort_dir') === 'asc' ? 'asc' : DEFAULT_FILTERS.sort_dir,
+  page: Math.max(1, Number(searchParams.get('page')) || 1),
+});
+
+const getSearchParamsFromFilters = (filters) => {
+  const next = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === '' || value === null || value === undefined) return;
+    if (key === 'page' && Number(value) === DEFAULT_FILTERS.page) return;
+    if (key === 'sort_by' && value === DEFAULT_FILTERS.sort_by) return;
+    if (key === 'sort_dir' && value === DEFAULT_FILTERS.sort_dir) return;
+    next.set(key, String(value));
+  });
+  return next;
+};
+
+const filtersEqual = (a, b) => Object.keys(DEFAULT_FILTERS).every(key => a[key] === b[key]);
+
 const formatDate = (value) => {
   if (!value) return 'N/A';
   return new Date(value).toLocaleDateString('en-PK', {
@@ -81,11 +120,13 @@ const DetailStat = ({ label, value }) => (
 );
 
 export default function AdminProjectsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsString = searchParams.toString();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [filters, setFilters] = useState({ search:'', status:'', sector:'', province:'', district:'', priority:'', sort_by:'created_at', sort_dir:'desc', page:1 });
+  const [filters, setFilters] = useState(() => getFiltersFromSearchParams(searchParams));
   const [density, setDensity] = useState('comfortable');
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -115,6 +156,18 @@ export default function AdminProjectsPage() {
       })
       .catch(()=>{}).finally(()=>setLoading(false));
   };
+
+  useEffect(() => {
+    const nextFilters = getFiltersFromSearchParams(new URLSearchParams(searchParamsString));
+    setFilters(current => filtersEqual(current, nextFilters) ? current : nextFilters);
+  }, [searchParamsString]);
+
+  useEffect(() => {
+    const nextSearchParams = getSearchParamsFromFilters(filters);
+    if (nextSearchParams.toString() !== searchParamsString) {
+      setSearchParams(nextSearchParams, { replace: true });
+    }
+  }, [filters, searchParamsString, setSearchParams]);
 
   useEffect(() => { fetchProjects(); }, [filters]);
 

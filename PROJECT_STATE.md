@@ -44,6 +44,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add URL-backed admin project filters`
+  - All Projects workbench now reads/writes `search`, `status`, `sector`, `province`, `district`, `priority`, `sort_by`, `sort_dir`, and `page` from the URL query string.
+  - Admin dashboard "Review now" and sidebar "Pending review" now open `/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc`.
+  - Legacy Pending Review page remains available, but its workbench shortcut now opens the filtered workbench.
+
 - `latest Add review audit context`
   - Admin project detail endpoint now returns reviewer name/email.
   - All Projects drawer now shows Review History when review notes/metadata exist.
@@ -150,11 +155,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step: decide whether to keep Pending Review as a separate queue or convert it into a redirect/workbench preset.
+Recommended next step: decide whether to fully retire the legacy Pending Review page or keep it as a lightweight queue.
 
-1. If kept, add review history display to the Pending Review modal too.
-2. If retired, redirect `/admin/review` to `/admin/projects` with the Pending Review filter.
-3. Consider saved filters if admins need repeatable views beyond quick chips.
+1. If retired, redirect `/admin/review` to `/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc`.
+2. If kept, add review history display to the Pending Review modal too.
+3. Consider dashboard/workbench deep links for Approved, Archived, and High Priority views.
 
 ## 7. Provincial Permission Model - Current Understanding
 
