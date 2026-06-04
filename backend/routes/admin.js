@@ -241,7 +241,7 @@ router.get('/projects/:id/detail', async (req, res) => {
 // GET all projects (admin)
 router.get('/projects', async (req, res) => {
   try {
-    const { status, sector, province, district, search, sort_by = 'created_at', sort_dir = 'desc', page = 1, limit = 15 } = req.query;
+    const { status, sector, province, district, priority, search, sort_by = 'created_at', sort_dir = 'desc', page = 1, limit = 15 } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
@@ -250,6 +250,12 @@ router.get('/projects', async (req, res) => {
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
     if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
+    if (priority === 'high_or_critical') {
+      conditions.push(`p.priority_level IN ('high', 'critical')`);
+    } else if (priority) {
+      conditions.push(`p.priority_level = $${idx++}`);
+      params.push(priority);
+    }
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
       params.push(`%${search}%`);
@@ -290,7 +296,7 @@ router.get('/projects', async (req, res) => {
 // Export projects to Excel
 router.get('/projects/export', async (req, res) => {
   try {
-    const { status, sector, province, district, search, ids, sort_by = 'created_at', sort_dir = 'desc' } = req.query;
+    const { status, sector, province, district, priority, search, ids, sort_by = 'created_at', sort_dir = 'desc' } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
@@ -303,6 +309,12 @@ router.get('/projects/export', async (req, res) => {
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
     if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
+    if (priority === 'high_or_critical') {
+      conditions.push(`p.priority_level IN ('high', 'critical')`);
+    } else if (priority) {
+      conditions.push(`p.priority_level = $${idx++}`);
+      params.push(priority);
+    }
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
       params.push(`%${search}%`);

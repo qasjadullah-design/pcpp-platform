@@ -30,6 +30,14 @@ const BULK_ACTIONS = {
   },
 };
 
+const QUICK_FILTERS = [
+  { label: 'All Projects', status: '', priority: '' },
+  { label: 'Pending Review', status: 'under_review', priority: '' },
+  { label: 'Approved', status: 'approved', priority: '' },
+  { label: 'Archived', status: 'archived', priority: '' },
+  { label: 'High Priority', status: '', priority: 'high_or_critical' },
+];
+
 const getPageNumbers = (currentPage, totalPageCount) => {
   const pages = [];
   const start = Math.max(1, currentPage - 2);
@@ -71,7 +79,7 @@ export default function AdminProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [filters, setFilters] = useState({ search:'', status:'', sector:'', province:'', district:'', sort_by:'created_at', sort_dir:'desc', page:1 });
+  const [filters, setFilters] = useState({ search:'', status:'', sector:'', province:'', district:'', priority:'', sort_by:'created_at', sort_dir:'desc', page:1 });
   const [density, setDensity] = useState('comfortable');
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -154,6 +162,12 @@ export default function AdminProjectsPage() {
   const handleProvinceChange = (province) => {
     setFilters(f => ({ ...f, province, district: '', page: 1 }));
   };
+
+  const applyQuickFilter = (preset) => {
+    setFilters(f => ({ ...f, status: preset.status, priority: preset.priority, page: 1 }));
+  };
+
+  const quickFilterActive = (preset) => filters.status === preset.status && filters.priority === preset.priority;
 
   const handleSort = (sortBy) => {
     setFilters(f => ({
@@ -250,6 +264,39 @@ export default function AdminProjectsPage() {
             <div className="text-xs text-gray-500">{l}</div>
           </div>
         ))}
+      </div>
+
+      {/* Quick filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {QUICK_FILTERS.map(preset => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => applyQuickFilter(preset)}
+            className={`px-3 py-1.5 rounded-full border text-sm transition ${quickFilterActive(preset) ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            {preset.label}
+          </button>
+        ))}
+        {filters.province && (
+          <button
+            type="button"
+            onClick={() => setFilters(f => ({ ...f, province: '', district: '', page: 1 }))}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-sm text-emerald-700 hover:bg-emerald-100"
+          >
+            Province: {filters.province}
+            <X size={14} strokeWidth={1.75} />
+          </button>
+        )}
+        {(filters.status || filters.priority || filters.province || filters.district || filters.sector || filters.search) && (
+          <button
+            type="button"
+            onClick={() => setFilters(f => ({ ...f, search: '', status: '', sector: '', province: '', district: '', priority: '', page: 1 }))}
+            className="px-3 py-1.5 rounded-full text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       {/* Filters */}

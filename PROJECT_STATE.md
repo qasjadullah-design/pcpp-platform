@@ -44,6 +44,12 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add admin project quick filters`
+  - Added quick filter chips for All Projects, Pending Review, Approved, Archived, and High Priority.
+  - High Priority includes both `high` and `critical` priority levels.
+  - Added removable active Province chip and Clear filters action.
+  - Backend admin list/export now support `priority`, including `high_or_critical`.
+
 - `latest Improve admin project table density`
   - Added Title and Organization to the safe backend sort whitelist.
   - Made Project and Organization sortable columns.
@@ -126,11 +132,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step: consider saved filter/view presets for common admin workflows.
+Recommended next step: improve admin review notes/actions if the approval workflow needs more audit detail.
 
-1. Add quick chips such as Pending Review, Approved, Archived, High Priority, and Province-selected.
-2. Consider saved filters if admins need repeatable views.
-3. Improve admin review notes/actions if the approval workflow needs more audit detail.
+1. Add a review-notes panel in the detail drawer for under-review projects.
+2. Consider request-changes/reject actions from the drawer if admins need the full review flow there.
+3. Consider saved filters if admins need repeatable views beyond quick chips.
 
 ## 7. Provincial Permission Model - Current Understanding
 
