@@ -44,6 +44,13 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `pending Add admin project detail drawer`
+  - Added `GET /api/admin/projects/:id/detail` for admin-only drawer data.
+  - Added `adminAPI.getProject`.
+  - Added a right-side detail drawer on All Projects.
+  - Drawer shows status, TRL, cost, funding gap, ROI, jobs, sector, province/district/city, priority/risk, owner, activity counts, timeline, and abstract.
+  - Drawer supports quick approve/archive and links to the full public project page.
+
 - `0933a0e Enhance admin project workbench`
   - Added backend single-project status route for inline approve/archive.
   - Added backend bulk status route for selected projects.
@@ -107,15 +114,12 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is admin project management polish.
 
-Recommended next step: add a compact project detail drawer so admins can inspect and act without leaving All Projects.
+Recommended next step: refine admin review safeguards and table ergonomics now that the drawer exists.
 
-1. Add a compact project detail drawer:
-   - open without leaving All Projects
-   - show owner, province/district, costs, status, TRL, risk, priority, dates
-   - quick approve/archive actions
+1. Add confirmation for bulk archive and possibly bulk approve.
 2. Add sortable title/organization if requested.
-3. Add table density/responsive improvements after the drawer workflow is stable.
-4. Consider a confirmation step for bulk archive if admins will handle large selected sets.
+3. Add table density/responsive improvements for smaller screens.
+4. Consider opening the drawer by clicking the row, while keeping checkbox/action clicks isolated.
 
 ## 7. Provincial Permission Model - Current Understanding
 

@@ -210,6 +210,32 @@ router.put('/projects/bulk-status', async (req, res) => {
   }
 });
 
+// GET a single project with admin-only review context for the All Projects drawer
+router.get('/projects/:id/detail', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT p.*,
+             u.first_name || ' ' || u.last_name AS owner_name,
+             u.email AS owner_email,
+             u.phone AS owner_phone,
+             u.role AS owner_role,
+             COALESCE((SELECT COUNT(*) FROM interests i WHERE i.project_id = p.id), 0)::int AS interest_count,
+             COALESCE((SELECT COUNT(*) FROM project_documents d WHERE d.project_id = p.id), 0)::int AS document_count,
+             COALESCE((SELECT COUNT(*) FROM project_updates pu WHERE pu.project_id = p.id), 0)::int AS update_count
+      FROM projects p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+    `, [id]);
+
+    if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch project detail' });
+  }
+});
+
 // GET all projects (admin)
 router.get('/projects', async (req, res) => {
   try {

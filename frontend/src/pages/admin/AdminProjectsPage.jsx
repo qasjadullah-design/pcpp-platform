@@ -5,7 +5,7 @@ import Badge from '../../components/common/Badge';
 import { STATUS_COLORS, SECTORS, PROVINCES, getDistricts, formatCurrency } from '../../utils/constants';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ExternalLink, FolderOpen, MapPin, X } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
@@ -36,6 +36,20 @@ const formatDate = (value) => {
   });
 };
 
+const DetailRow = ({ label, value }) => (
+  <div className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 text-sm">
+    <span className="text-gray-500">{label}</span>
+    <span className="font-medium text-gray-900 text-right">{value === null || value === undefined || value === '' ? 'N/A' : value}</span>
+  </div>
+);
+
+const DetailStat = ({ label, value }) => (
+  <div className="border border-gray-200 rounded-xl p-3">
+    <div className="text-xs text-gray-500">{label}</div>
+    <div className="mt-1 text-sm font-semibold text-gray-900">{value === null || value === undefined || value === '' ? 'N/A' : value}</div>
+  </div>
+);
+
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +61,8 @@ export default function AdminProjectsPage() {
   const [stats, setStats] = useState({ under_review: 0, approved: 0, archived: 0 });
   const [selected, setSelected] = useState(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [detailProject, setDetailProject] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchProjects = () => {
     setLoading(true);
@@ -73,6 +89,7 @@ export default function AdminProjectsPage() {
     try {
       await adminAPI.changeProjectStatus(projectId, newStatus);
       toast.success(`Project ${newStatus === 'approved' ? 'approved' : 'archived'} successfully!`);
+      setDetailProject(p => p?.id === projectId ? { ...p, status: newStatus } : p);
       fetchProjects();
     } catch (e) {
       toast.error(e.message || 'Failed to change status');
@@ -100,6 +117,21 @@ export default function AdminProjectsPage() {
   });
 
   const clearSelection = () => setSelected(new Set());
+
+  const openDetailDrawer = async (project) => {
+    setDetailProject(project);
+    setDetailLoading(true);
+    try {
+      const detail = await adminAPI.getProject(project.id);
+      setDetailProject(detail);
+    } catch (e) {
+      toast.error(e.message || 'Failed to load project details');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetailDrawer = () => setDetailProject(null);
 
   const handleProvinceChange = (province) => {
     setFilters(f => ({ ...f, province, district: '', page: 1 }));
@@ -171,6 +203,7 @@ export default function AdminProjectsPage() {
   };
 
   const handleExportSelected = () => runExport({ ids: Array.from(selected).join(',') });
+  const drawerNextStatus = detailProject ? NEXT_STATUS[detailProject.status] : null;
 
   return (
     <div className="p-8">
@@ -276,6 +309,7 @@ export default function AdminProjectsPage() {
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(p.created_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
+                        <button onClick={() => openDetailDrawer(p)} className="text-xs border border-emerald-200 text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-50">Details</button>
                         <Link to={`/projects/${p.id}`} className="text-xs border border-gray-300 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50">View</Link>
                         {next && (
                           <button
@@ -338,6 +372,100 @@ export default function AdminProjectsPage() {
               Last
             </button>
           </div>
+        </div>
+      )}
+
+      {detailProject && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/30" onClick={closeDetailDrawer} />
+          <aside className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl flex flex-col">
+            <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-200">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FolderOpen size={18} strokeWidth={1.75} className="text-emerald-700" />
+                  <span className="text-xs font-semibold uppercase text-gray-500">Project Detail</span>
+                </div>
+                <h2 className="text-lg font-bold text-gray-900 leading-snug">{detailProject.title}</h2>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Badge label={detailProject.status?.replace(/_/g,' ')} color={STATUS_COLORS[detailProject.status]||'gray'} dot />
+                  {detailProject.trl_level && <Badge label={`TRL ${detailProject.trl_level}`} color="blue" />}
+                </div>
+              </div>
+              <button onClick={closeDetailDrawer} className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close project detail">
+                <X size={20} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              {detailLoading && <div className="text-sm text-gray-500">Loading latest details...</div>}
+
+              <div className="grid grid-cols-2 gap-3">
+                <DetailStat label="Total Cost" value={formatCurrency(detailProject.total_cost)} />
+                <DetailStat label="Funding Gap" value={formatCurrency(detailProject.funding_gap)} />
+                <DetailStat label="Expected ROI" value={detailProject.expected_roi !== null && detailProject.expected_roi !== undefined && detailProject.expected_roi !== '' ? `${detailProject.expected_roi}%` : 'N/A'} />
+                <DetailStat label="Jobs Created" value={detailProject.jobs_created !== null && detailProject.jobs_created !== undefined && detailProject.jobs_created !== '' ? Number(detailProject.jobs_created).toLocaleString() : 'N/A'} />
+              </div>
+
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Location & Classification</h3>
+                <DetailRow label="Sector" value={detailProject.primary_sector} />
+                <DetailRow label="Province" value={detailProject.province || 'Unspecified'} />
+                <DetailRow label="District" value={detailProject.district} />
+                <DetailRow label="City" value={detailProject.city} />
+                <DetailRow label="Priority" value={detailProject.priority_level} />
+                <DetailRow label="Risk" value={detailProject.risk_level} />
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Owner & Activity</h3>
+                <DetailRow label="Organization" value={detailProject.organization_name} />
+                <DetailRow label="Owner" value={detailProject.owner_name} />
+                <DetailRow label="Owner Email" value={detailProject.owner_email} />
+                <DetailRow label="Interests" value={detailProject.interest_count != null ? Number(detailProject.interest_count).toLocaleString() : '0'} />
+                <DetailRow label="Documents" value={detailProject.document_count != null ? Number(detailProject.document_count).toLocaleString() : '0'} />
+                <DetailRow label="Updates" value={detailProject.update_count != null ? Number(detailProject.update_count).toLocaleString() : '0'} />
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Timeline</h3>
+                <DetailRow label="Created" value={formatDate(detailProject.created_at)} />
+                <DetailRow label="Updated" value={formatDate(detailProject.updated_at)} />
+                <DetailRow label="Start Date" value={formatDate(detailProject.start_date)} />
+                <DetailRow label="End Date" value={formatDate(detailProject.end_date)} />
+              </section>
+
+              {detailProject.abstract && (
+                <section>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Abstract</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">{detailProject.abstract}</p>
+                </section>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                <MapPin size={14} strokeWidth={1.75} />
+                <span>{[detailProject.district, detailProject.province].filter(Boolean).join(', ') || 'No location set'}</span>
+                <CalendarDays size={14} strokeWidth={1.75} className="ml-2" />
+                <span>{formatDate(detailProject.created_at)}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {drawerNextStatus && (
+                  <button
+                    onClick={() => handleStatusChange(detailProject.id, drawerNextStatus.value)}
+                    disabled={changing === detailProject.id}
+                    className={`text-sm text-white px-4 py-2 rounded-lg ${drawerNextStatus.color} disabled:opacity-50`}
+                  >
+                    {changing === detailProject.id ? 'Working...' : drawerNextStatus.label}
+                  </button>
+                )}
+                <Link to={`/projects/${detailProject.id}`} className="inline-flex items-center gap-2 text-sm border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50">
+                  View Full Page
+                  <ExternalLink size={16} strokeWidth={1.75} />
+                </Link>
+              </div>
+            </div>
+          </aside>
         </div>
       )}
     </div>
