@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Search, Plus, Send, FolderOpen, Settings, RefreshCw, Users, BarChart3, Bookmark } from 'lucide-react';
+import { LayoutDashboard, Search, Plus, Send, FolderOpen, Settings, RefreshCw, Users, BarChart3, Bookmark, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PcppLogo from '../common/PcppLogo';
 
@@ -10,6 +10,7 @@ const userLinks = [
   { to: '/dashboard/submit', Icon: Plus, label: 'Submit project' },
   { to: '/dashboard/interests', Icon: Send, label: 'My interests' },
   { to: '/dashboard/projects', Icon: FolderOpen, label: 'My projects' },
+  { to: '/dashboard/notifications', Icon: Bell, label: 'Notifications' },
   { to: '/dashboard/settings', Icon: Settings, label: 'Settings' },
 ];
 
@@ -18,6 +19,7 @@ const investorLinks = [
   { to: '/projects', Icon: Search, label: 'Browse projects' },
   { to: '/dashboard/interests', Icon: Send, label: 'My interests' },
   { to: '/dashboard/saved', Icon: Bookmark, label: 'Saved projects' },
+  { to: '/dashboard/notifications', Icon: Bell, label: 'Notifications' },
   { to: '/dashboard/settings', Icon: Settings, label: 'Settings' },
 ];
 
@@ -27,6 +29,7 @@ const adminLinks = [
   { to: '/admin/projects', Icon: FolderOpen, label: 'All projects' },
   { to: '/admin/users', Icon: Users, label: 'All users' },
   { to: '/admin/analytics', Icon: BarChart3, label: 'Analytics' },
+  { to: '/dashboard/notifications', Icon: Bell, label: 'Notifications' },
   { to: '/admin/settings', Icon: Settings, label: 'Settings' },
 ];
 
@@ -36,6 +39,7 @@ const provincialLinks = [
   { to: '/projects', Icon: Search, label: 'Province projects' },
   { to: '/dashboard/submit', Icon: Plus, label: 'Submit project' },
   { to: '/dashboard/analytics', Icon: BarChart3, label: 'Analytics' },
+  { to: '/dashboard/notifications', Icon: Bell, label: 'Notifications' },
   { to: '/dashboard/settings', Icon: Settings, label: 'Settings' },
 ];
 

@@ -44,6 +44,12 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add notifications inbox`
+  - Added `/dashboard/notifications` page with unread count, mark-one-read, mark-all-read, and open linked notification.
+  - Added Notifications sidebar link for admin, investor, provincial, and standard dashboard roles.
+  - Dashboard bell now links to the notifications inbox.
+  - Notification parser supports both raw-pg `{ notifications }` and older Sequelize `{ data }` response shapes.
+
 - `latest Polish investor interest workflow`
   - Project detail now detects existing user interest and disables duplicate submissions.
   - Express Interest modal now captures investment intent, timeline, and preferred contact method inside the stored note.
@@ -181,12 +187,13 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is registration and role-specific investor experience.
 
-Recommended next step: verify the live investor signup/login, save, interest, and owner-reply paths on Render.
+Recommended next step: verify the live investor signup/login, save, interest, owner-reply, and notification paths on Render.
 
 1. Register a test investor from `/register`; confirm DB role is `investor`, status is `active`, and login lands on `/dashboard`.
 2. Save an approved project from its detail page; confirm it appears in `/dashboard/saved`.
 3. Express interest in an approved project; confirm `/dashboard/interests` and owner notification update.
 4. Login as the project owner; open My Projects -> View Interests; reply and confirm the investor sees it.
+5. Open `/dashboard/notifications`; mark one and all notifications read.
 
 ## 7. Provincial Permission Model - Current Understanding
 

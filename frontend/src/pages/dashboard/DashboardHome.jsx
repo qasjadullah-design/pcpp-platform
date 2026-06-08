@@ -53,10 +53,10 @@ export default function DashboardHome() {
             <p className="text-sm text-ink-secondary">Investor dashboard</p>
             <p className="text-xs text-ink-tertiary">Pakistan Country Project Platform</p>
           </div>
-          <div className="relative">
+          <Link to="/dashboard/notifications" className="relative" aria-label="Open notifications">
             <Bell size={20} strokeWidth={1.75} className="text-ink-secondary" />
             {unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 bg-status-rejected text-white text-[10px] rounded-full flex items-center justify-center">{unread}</span>}
-          </div>
+          </Link>
         </div>
 
         <div className="bg-pcpp-emerald text-white rounded-card p-6 mb-6 flex items-center justify-between">
@@ -122,10 +122,10 @@ export default function DashboardHome() {
           <p className="text-xs text-ink-tertiary">Pakistan Country Project Platform</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <Link to="/dashboard/notifications" className="relative" aria-label="Open notifications">
             <Bell size={20} strokeWidth={1.75} className="text-ink-secondary cursor-pointer" />
             {unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 bg-status-rejected text-white text-[10px] rounded-full flex items-center justify-center">{unread}</span>}
-          </div>
+          </Link>
         </div>
       </div>
 
