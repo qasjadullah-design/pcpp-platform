@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { interestsAPI, projectsAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
 import { STATUS_COLORS, formatCurrency } from '../../utils/constants';
@@ -12,6 +12,7 @@ const formatRange = (min, max) => {
 };
 
 export default function MyProjectsPage() {
+  const [searchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openProjectId, setOpenProjectId] = useState('');
@@ -23,6 +24,29 @@ export default function MyProjectsPage() {
   useEffect(() => {
     projectsAPI.getMine().then(r => setProjects(Array.isArray(r) ? r : r?.projects || [])).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
+
+  const loadProjectInterests = async (projectId) => {
+    if (projectInterests[projectId]) return;
+
+    setLoadingInterests(projectId);
+    try {
+      const result = await interestsAPI.getForProject(projectId);
+      setProjectInterests(prev => ({ ...prev, [projectId]: Array.isArray(result) ? result : result?.interests || [] }));
+    } catch(e) {
+      toast.error(e.message || 'Failed to load project interests');
+    } finally {
+      setLoadingInterests('');
+    }
+  };
+
+  useEffect(() => {
+    const projectId = searchParams.get('project');
+    const shouldOpenInterests = searchParams.get('interests') === '1';
+    if (!projectId || !shouldOpenInterests) return;
+
+    setOpenProjectId(projectId);
+    loadProjectInterests(projectId);
+  }, [searchParams]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this project?')) return;
@@ -37,17 +61,7 @@ export default function MyProjectsPage() {
     }
 
     setOpenProjectId(projectId);
-    if (projectInterests[projectId]) return;
-
-    setLoadingInterests(projectId);
-    try {
-      const result = await interestsAPI.getForProject(projectId);
-      setProjectInterests(prev => ({ ...prev, [projectId]: Array.isArray(result) ? result : result?.interests || [] }));
-    } catch(e) {
-      toast.error(e.message || 'Failed to load project interests');
-    } finally {
-      setLoadingInterests('');
-    }
+    loadProjectInterests(projectId);
   };
 
   const handleReply = async (interestId, projectId) => {

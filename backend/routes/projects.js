@@ -322,7 +322,7 @@ RETURNING *
       await pool.query(`
         INSERT INTO notifications (user_id, title, message, type, link)
         VALUES ($1,$2,$3,'info',$4)
-      `, [admin.id, 'New Project Submitted', `"${title}" has been submitted for review.`, `/admin/projects/${projectId}`]);
+      `, [admin.id, 'New Project Submitted', `"${title}" has been submitted for review.`, '/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc']);
     }
 
     res.status(201).json(project);

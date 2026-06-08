@@ -33,7 +33,7 @@ async function createInterest(req, res) {
         project.rows[0].user_id,
         'New Investment Interest',
         `${req.user.first_name} ${req.user.last_name} expressed interest in "${project.rows[0].title}"`,
-        `/dashboard/projects`
+        `/dashboard/projects?project=${projectId}&interests=1`
       ]);
     }
 
