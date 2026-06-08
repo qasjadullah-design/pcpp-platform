@@ -44,6 +44,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Align backend deploy entrypoint`
+  - `backend/package.json` now starts `node server.js` instead of `node src/server.js`.
+  - `backend/Dockerfile` now runs `server.js`.
+  - This makes Render/Docker use the raw-pg `backend/routes/*` API that current work targets.
+
 - `latest Add notification deep links`
   - New investment interest notifications now link to `/dashboard/projects?project=<id>&interests=1`.
   - `MyProjectsPage` reads that query string and auto-opens the received-interests panel.
