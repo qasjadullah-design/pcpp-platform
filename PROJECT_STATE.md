@@ -44,6 +44,12 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Polish investor interest workflow`
+  - Project detail now detects existing user interest and disables duplicate submissions.
+  - Express Interest modal now captures investment intent, timeline, and preferred contact method inside the stored note.
+  - `/dashboard/interests` now shows richer project, finance, message, and owner-response context.
+  - Project owners can open received interests from My Projects, see investor contact details, and reply inline.
+
 - `latest Add investor saved-projects flow`
   - Added live raw-pg `GET /api/projects/saved` route for the current user's saved projects.
   - Added `/dashboard/saved` page and investor sidebar link.
@@ -175,11 +181,12 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is registration and role-specific investor experience.
 
-Recommended next step: verify the live investor signup/login and save/interest paths on Render, then polish project-interest UX.
+Recommended next step: verify the live investor signup/login, save, interest, and owner-reply paths on Render.
 
 1. Register a test investor from `/register`; confirm DB role is `investor`, status is `active`, and login lands on `/dashboard`.
 2. Save an approved project from its detail page; confirm it appears in `/dashboard/saved`.
 3. Express interest in an approved project; confirm `/dashboard/interests` and owner notification update.
+4. Login as the project owner; open My Projects -> View Interests; reply and confirm the investor sees it.
 
 ## 7. Provincial Permission Model - Current Understanding
 

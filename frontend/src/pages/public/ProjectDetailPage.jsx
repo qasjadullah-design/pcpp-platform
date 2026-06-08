@@ -22,10 +22,11 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('Overview');
   const [interestModal, setInterestModal] = useState(false);
-  const [interestData, setInterestData] = useState({ message: '', investment_range_min: '', investment_range_max: '' });
+  const [interestData, setInterestData] = useState({ message: '', investment_range_min: '', investment_range_max: '', contact_method: '', investment_timeline: '', intent: '' });
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savingProject, setSavingProject] = useState(false);
+  const [myInterest, setMyInterest] = useState(null);
 
   useEffect(() => {
     projectsAPI
@@ -34,6 +35,7 @@ export default function ProjectDetailPage() {
         const nextProject = r?.data || r;
         setProject(nextProject);
         setSaved(Boolean(nextProject?.is_saved));
+        setMyInterest(nextProject?.my_interest || null);
       })
       .catch(() => {
         const fallback = MOCK_FEATURED_PROJECTS.find((p) => p.id === id);
@@ -44,9 +46,21 @@ export default function ProjectDetailPage() {
 
   const handleInterest = async () => {
     if (!user) { window.location.href = '/login'; return; }
+    if (myInterest) {
+      toast('You have already expressed interest in this project.');
+      setInterestModal(false);
+      return;
+    }
     setSubmitting(true);
     try {
-      await interestsAPI.express(id, interestData);
+      const details = [
+        interestData.message?.trim(),
+        interestData.intent ? `Investment intent: ${interestData.intent}` : '',
+        interestData.investment_timeline ? `Timeline: ${interestData.investment_timeline}` : '',
+        interestData.contact_method ? `Preferred contact: ${interestData.contact_method}` : '',
+      ].filter(Boolean).join('\n\n');
+      const createdInterest = await interestsAPI.express(id, { ...interestData, message: details });
+      setMyInterest(createdInterest);
       toast.success('Interest expressed successfully!');
       setInterestModal(false);
     } catch(e) { toast.error(e.message || 'Failed to express interest'); }
@@ -302,8 +316,10 @@ export default function ProjectDetailPage() {
 
           <div className="bg-emerald-600 text-white rounded-2xl p-5">
             <h3 className="font-semibold mb-1">Invest in this Project</h3>
-            <p className="text-xs text-emerald-100 mb-4">Connect with project owner</p>
-            <Button className="w-full justify-center mb-2" onClick={() => setInterestModal(true)}>Invest Now</Button>
+            <p className="text-xs text-emerald-100 mb-4">{myInterest ? 'Your interest has been sent to the project owner' : 'Connect with project owner'}</p>
+            <Button className="w-full justify-center mb-2" disabled={Boolean(myInterest)} onClick={() => setInterestModal(true)}>
+              {myInterest ? 'Interest Sent' : 'Invest Now'}
+            </Button>
             <button
               type="button"
               onClick={handleSaveProject}
@@ -328,6 +344,11 @@ export default function ProjectDetailPage() {
 
       <Modal isOpen={interestModal} onClose={() => setInterestModal(false)} title="Express Investment Interest">
         <div className="space-y-4">
+          {myInterest && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-800">
+              You have already expressed interest in this project.
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Message to Project Owner</label>
             <textarea rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Describe your investment interest..." value={interestData.message} onChange={e => setInterestData(d => ({ ...d, message: e.target.value }))}/>
@@ -336,7 +357,38 @@ export default function ProjectDetailPage() {
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Min Investment (PKR)</label><input type="number" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" value={interestData.investment_range_min} onChange={e => setInterestData(d => ({ ...d, investment_range_min: e.target.value }))}/></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Max Investment (PKR)</label><input type="number" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" value={interestData.investment_range_max} onChange={e => setInterestData(d => ({ ...d, investment_range_max: e.target.value }))}/></div>
           </div>
-          <Button className="w-full justify-center" loading={submitting} onClick={handleInterest}>Submit Interest</Button>
+          <div className="grid md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Intent</label>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" value={interestData.intent} onChange={e => setInterestData(d => ({ ...d, intent: e.target.value }))}>
+                <option value="">Select intent</option>
+                <option value="Equity investment">Equity investment</option>
+                <option value="Debt financing">Debt financing</option>
+                <option value="Grant or blended finance">Grant or blended finance</option>
+                <option value="Strategic partnership">Strategic partnership</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" value={interestData.investment_timeline} onChange={e => setInterestData(d => ({ ...d, investment_timeline: e.target.value }))}>
+                <option value="">Select timeline</option>
+                <option value="Immediately">Immediately</option>
+                <option value="Within 30 days">Within 30 days</option>
+                <option value="1-3 months">1-3 months</option>
+                <option value="Exploratory">Exploratory</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Contact</label>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" value={interestData.contact_method} onChange={e => setInterestData(d => ({ ...d, contact_method: e.target.value }))}>
+                <option value="">Select contact</option>
+                <option value="Email">Email</option>
+                <option value="Phone">Phone</option>
+                <option value="Meeting">Meeting</option>
+              </select>
+            </div>
+          </div>
+          <Button className="w-full justify-center" disabled={Boolean(myInterest)} loading={submitting} onClick={handleInterest}>{myInterest ? 'Interest Already Sent' : 'Submit Interest'}</Button>
         </div>
       </Modal>
     </div>

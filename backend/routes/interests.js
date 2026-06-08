@@ -53,7 +53,8 @@ router.post('/:projectId', authenticate, createInterest);
 router.get('/my', authenticate, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT i.*, p.title AS project_title, p.primary_sector, p.district, p.status AS project_status,
+      SELECT i.*, p.title AS project_title, p.primary_sector, p.province, p.district,
+             p.status AS project_status, p.total_cost, p.funding_gap, p.expected_roi,
              p.organization_name, p.infographic_url
       FROM interests i
       JOIN projects p ON i.project_id = p.id

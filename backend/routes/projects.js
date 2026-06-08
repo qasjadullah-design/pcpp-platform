@@ -163,9 +163,15 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
     // Check if user has saved this project
     let isSaved = false;
+    let myInterest = null;
     if (req.user) {
       const saved = await pool.query('SELECT id FROM saved_projects WHERE user_id = $1 AND project_id = $2', [req.user.id, id]);
       isSaved = saved.rows.length > 0;
+      const interest = await pool.query(
+        'SELECT id, status, owner_response, owner_responded_at, created_at FROM interests WHERE user_id = $1 AND project_id = $2',
+        [req.user.id, id]
+      );
+      myInterest = interest.rows[0] || null;
     }
 
     res.json({
@@ -178,7 +184,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
       shareholders: shareholders.rows,
       future_plans: futurePlans.rows,
       linked_projects: linkedProjects.rows,
-      is_saved: isSaved
+      is_saved: isSaved,
+      has_expressed_interest: Boolean(myInterest),
+      my_interest: myInterest
     });
   } catch (err) {
     console.error(err);
