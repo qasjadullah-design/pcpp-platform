@@ -12,6 +12,7 @@ export default function DashboardHome() {
   const [myInterests, setMyInterests] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [availableProjects, setAvailableProjects] = useState(0);
+  const [savedProjects, setSavedProjects] = useState([]);
 
   useEffect(() => {
     // The axios interceptor already unwraps response.data, so `r` IS the body.
@@ -20,6 +21,7 @@ export default function DashboardHome() {
     }
     if (user?.role === 'investor') {
       projectsAPI.getAll({ limit: 1 }).then(r => setAvailableProjects(Number(r?.total) || 0)).catch(()=>{});
+      projectsAPI.getSaved().then(r => setSavedProjects(Array.isArray(r) ? r : r?.projects || [])).catch(()=>{});
     }
     interestsAPI.getMine().then(r => setMyInterests(Array.isArray(r) ? r : r?.interests || [])).catch(()=>{});
     notificationsAPI.getAll().then(r => setNotifications(Array.isArray(r) ? r : r?.notifications || [])).catch(()=>{});
@@ -39,9 +41,9 @@ export default function DashboardHome() {
   if (isInvestor) {
     const investorStats = [
       { Icon: Search, value: availableProjects, label: 'Available projects' },
+      { Icon: Bookmark, value: savedProjects.length, label: 'Saved projects' },
       { Icon: Send, value: myInterests.length, label: 'Interests sent' },
       { Icon: Inbox, value: ownerReplies, label: 'Owner replies' },
-      { Icon: Bell, value: unread, label: 'Unread alerts' },
     ];
 
     return (
@@ -78,7 +80,7 @@ export default function DashboardHome() {
           ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
+        <div className="grid md:grid-cols-3 gap-4 mb-6">
           <Link to="/projects" className="bg-pcpp-card border border-pcpp-border rounded-card p-5 hover:border-pcpp-emerald hover:shadow-sm transition flex items-center gap-4">
             <span className="w-10 h-10 rounded-control bg-pcpp-emerald/10 text-pcpp-emerald flex items-center justify-center"><Search size={20} strokeWidth={1.75} /></span>
             <div className="flex-1"><div className="font-medium text-ink">Browse investment opportunities</div><p className="text-xs text-ink-secondary">Review approved projects and express interest</p></div>
@@ -86,6 +88,10 @@ export default function DashboardHome() {
           <Link to="/dashboard/interests" className="bg-pcpp-card border border-pcpp-border rounded-card p-5 hover:border-pcpp-emerald hover:shadow-sm transition flex items-center gap-4">
             <span className="w-10 h-10 rounded-control bg-pcpp-emerald/10 text-pcpp-emerald flex items-center justify-center"><Send size={20} strokeWidth={1.75} /></span>
             <div className="flex-1"><div className="font-medium text-ink">Track my interests</div><p className="text-xs text-ink-secondary">See responses from project owners</p></div>
+          </Link>
+          <Link to="/dashboard/saved" className="bg-pcpp-card border border-pcpp-border rounded-card p-5 hover:border-pcpp-emerald hover:shadow-sm transition flex items-center gap-4">
+            <span className="w-10 h-10 rounded-control bg-pcpp-emerald/10 text-pcpp-emerald flex items-center justify-center"><Bookmark size={20} strokeWidth={1.75} /></span>
+            <div className="flex-1"><div className="font-medium text-ink">Review saved projects</div><p className="text-xs text-ink-secondary">Return to shortlisted opportunities</p></div>
           </Link>
         </div>
 

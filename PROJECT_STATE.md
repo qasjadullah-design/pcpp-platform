@@ -44,6 +44,13 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add investor saved-projects flow`
+  - Added live raw-pg `GET /api/projects/saved` route for the current user's saved projects.
+  - Added `/dashboard/saved` page and investor sidebar link.
+  - Project detail page now supports Save Project / Saved using existing save toggle API.
+  - Investor dashboard now counts saved projects and links to the saved list.
+  - Project card "Invest Now" CTA now opens the project detail page instead of being inert.
+
 - `latest Relax Render API rate limiting`
   - Both backend entrypoints now set `trust proxy` for Render/proxy IP handling.
   - Global API limit raised from 100/15min to env-configurable `API_RATE_LIMIT_MAX` defaulting to 1000.
@@ -168,11 +175,11 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 The current UI thread is registration and role-specific investor experience.
 
-Recommended next step: verify the live investor signup/login path on Render, then polish project-interest UX.
+Recommended next step: verify the live investor signup/login and save/interest paths on Render, then polish project-interest UX.
 
 1. Register a test investor from `/register`; confirm DB role is `investor`, status is `active`, and login lands on `/dashboard`.
-2. Express interest in an approved project; confirm `/dashboard/interests` and owner notification update.
-3. Consider adding saved-projects UI because save/toggle backend support already exists, but the investor dashboard currently focuses on interests.
+2. Save an approved project from its detail page; confirm it appears in `/dashboard/saved`.
+3. Express interest in an approved project; confirm `/dashboard/interests` and owner notification update.
 
 ## 7. Provincial Permission Model - Current Understanding
 

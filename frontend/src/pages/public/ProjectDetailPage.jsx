@@ -11,7 +11,7 @@ import Tooltip from '../../components/common/Tooltip';
 import { STATUS_COLORS, SDG_GOALS, TRL_LEVELS } from '../../utils/constants';
 import { trlText } from '../../utils/trl';
 import toast from 'react-hot-toast';
-import { Building2, ClipboardList, Droplet, Globe2, Landmark, Leaf, Mail, MapPin, Phone, Zap } from 'lucide-react';
+import { Bookmark, Building2, ClipboardList, Droplet, Globe2, Landmark, Leaf, Mail, MapPin, Phone, Zap } from 'lucide-react';
 
 const TABS = ['Overview','Financial','Team','Documents','Updates','Gallery'];
 
@@ -24,11 +24,17 @@ export default function ProjectDetailPage() {
   const [interestModal, setInterestModal] = useState(false);
   const [interestData, setInterestData] = useState({ message: '', investment_range_min: '', investment_range_max: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [savingProject, setSavingProject] = useState(false);
 
   useEffect(() => {
     projectsAPI
       .getOne(id)
-      .then((r) => setProject(r?.data || r))
+      .then((r) => {
+        const nextProject = r?.data || r;
+        setProject(nextProject);
+        setSaved(Boolean(nextProject?.is_saved));
+      })
       .catch(() => {
         const fallback = MOCK_FEATURED_PROJECTS.find((p) => p.id === id);
         if (fallback) setProject(fallback);
@@ -45,6 +51,20 @@ export default function ProjectDetailPage() {
       setInterestModal(false);
     } catch(e) { toast.error(e.message || 'Failed to express interest'); }
     finally { setSubmitting(false); }
+  };
+
+  const handleSaveProject = async () => {
+    if (!user) { window.location.href = '/login'; return; }
+    setSavingProject(true);
+    try {
+      const result = await projectsAPI.toggleSave(id);
+      setSaved(Boolean(result?.saved));
+      toast.success(result?.saved ? 'Project saved' : 'Project removed from saved projects');
+    } catch(e) {
+      toast.error(e.message || 'Failed to update saved project');
+    } finally {
+      setSavingProject(false);
+    }
   };
 
   if (loading) return <Spinner size="lg"/>;
@@ -284,7 +304,16 @@ export default function ProjectDetailPage() {
             <h3 className="font-semibold mb-1">Invest in this Project</h3>
             <p className="text-xs text-emerald-100 mb-4">Connect with project owner</p>
             <Button className="w-full justify-center mb-2" onClick={() => setInterestModal(true)}>Invest Now</Button>
-            {!user && <Link to="/register" className="block text-center text-sm border border-white/50 text-white py-2 rounded-lg hover:bg-white/10">Register</Link>}
+            <button
+              type="button"
+              onClick={handleSaveProject}
+              disabled={savingProject}
+              className="w-full inline-flex items-center justify-center gap-2 text-sm border border-white/50 text-white py-2 rounded-lg hover:bg-white/10 disabled:opacity-60"
+            >
+              <Bookmark size={16} strokeWidth={1.75} fill={saved ? 'currentColor' : 'none'} />
+              {saved ? 'Saved' : 'Save Project'}
+            </button>
+            {!user && <Link to="/register" className="block text-center text-sm border border-white/50 text-white py-2 rounded-lg hover:bg-white/10 mt-2">Register</Link>}
           </div>
 
           {(project.project_lead?.email || project.project_lead?.phone) && (

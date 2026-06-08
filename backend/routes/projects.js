@@ -98,6 +98,31 @@ router.get('/my', authenticate, async (req, res) => {
   }
 });
 
+// GET the current user's saved projects.
+router.get('/saved', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.id, p.project_code, p.title, p.abstract, p.primary_sector, p.province, p.district, p.city,
+             p.status, p.trl_level, p.currency, p.total_cost, p.funding_gap,
+             p.expected_roi, p.payback_years, p.direct_beneficiaries, p.jobs_created,
+             p.organization_name, p.tags, p.progress_percent, p.infographic_url,
+             p.created_at, p.risk_level, p.priority_level,
+             sp.created_at AS saved_at,
+             u.first_name || ' ' || u.last_name AS owner_name
+      FROM saved_projects sp
+      JOIN projects p ON sp.project_id = p.id
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE sp.user_id = $1
+      ORDER BY sp.created_at DESC
+    `, [req.user.id]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch saved projects' });
+  }
+});
+
 // GET single project
 router.get('/:id', optionalAuth, async (req, res) => {
   try {

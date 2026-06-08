@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Search, Plus, Send, FolderOpen, Settings, RefreshCw, Users, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Search, Plus, Send, FolderOpen, Settings, RefreshCw, Users, BarChart3, Bookmark } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PcppLogo from '../common/PcppLogo';
 
@@ -17,6 +17,7 @@ const investorLinks = [
   { to: '/dashboard', Icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/projects', Icon: Search, label: 'Browse projects' },
   { to: '/dashboard/interests', Icon: Send, label: 'My interests' },
+  { to: '/dashboard/saved', Icon: Bookmark, label: 'Saved projects' },
   { to: '/dashboard/settings', Icon: Settings, label: 'Settings' },
 ];
 

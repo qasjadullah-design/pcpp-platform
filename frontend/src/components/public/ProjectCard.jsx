@@ -110,13 +110,13 @@ export default function ProjectCard({ project }) {
         >
           View Details
         </Link>
-        <button
-          type="button"
+        <Link
+          to={detailLink}
           className="flex-1 inline-flex items-center justify-center gap-2 text-white py-2.5 rounded-lg text-sm font-medium shadow-sm hover:shadow"
           style={{ backgroundColor: accentColor }}
         >
           Invest Now
-        </button>
+        </Link>
       </div>
     </div>
   );

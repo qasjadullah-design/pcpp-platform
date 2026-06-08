@@ -18,6 +18,7 @@ import RegisterPage from './pages/public/RegisterPage';
 import DashboardHome from './pages/dashboard/DashboardHome';
 import MyProjectsPage from './pages/dashboard/MyProjectsPage';
 import MyInterestsPage from './pages/dashboard/MyInterestsPage';
+import SavedProjectsPage from './pages/dashboard/SavedProjectsPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import SubmitProjectPage from './pages/dashboard/SubmitProjectPage';
 import AnalyticsPage from './pages/dashboard/AnalyticsPage';
@@ -55,6 +56,7 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><DashboardHome/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/projects" element={<ProtectedRoute><DashboardLayout><MyProjectsPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/interests" element={<ProtectedRoute><DashboardLayout><MyInterestsPage/></DashboardLayout></ProtectedRoute>}/>
+      <Route path="/dashboard/saved" element={<ProtectedRoute><DashboardLayout><SavedProjectsPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/submit" element={<ProtectedRoute><DashboardLayout><SubmitProjectPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/analytics" element={<ProtectedRoute><DashboardLayout><AnalyticsPage/></DashboardLayout></ProtectedRoute>}/>
       <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage/></DashboardLayout></ProtectedRoute>}/>
