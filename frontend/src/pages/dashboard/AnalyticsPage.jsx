@@ -74,6 +74,8 @@ const pointSize = (project) => clamp(8 + Math.log10(Number(project.total_cost ||
 
 const statusLabel = (status) => (status || 'unspecified').replace(/_/g, ' ');
 
+const districtKey = (row) => `${row.province || 'Unspecified'}::${row.district || 'Unspecified'}`;
+
 const matchesProjectFilters = (project, activeFilter, tableFilters) => {
   if (activeFilter?.type === 'sector' && sectorBucket(project) !== activeFilter.value) return false;
   if (activeFilter?.type === 'lifecycle' && lifecycleBucket(project) !== activeFilter.value) return false;
@@ -83,6 +85,7 @@ const matchesProjectFilters = (project, activeFilter, tableFilters) => {
   if (tableFilters.lifecycle && lifecycleBucket(project) !== tableFilters.lifecycle) return false;
   if (tableFilters.trl && Number(project.trl_level) !== Number(tableFilters.trl)) return false;
   if (tableFilters.province && (project.province || 'Unspecified') !== tableFilters.province) return false;
+  if (tableFilters.district && (project.district || 'Unspecified') !== tableFilters.district) return false;
   return true;
 };
 
@@ -132,13 +135,13 @@ function ChartPanel({ title, caption, children, empty }) {
   );
 }
 
-function ProjectsMapPanel({ data, isProvince, visibleProjects }) {
+function ProjectsMapPanel({ data, isProvince, visibleProjects, missingProjects, selectedDistrictKey, onDistrictSelect, onClearDistrict, onExportMissing }) {
   const mapData = data?.map || {};
   const bounds = { ...mapFallbackBounds, ...(mapData.bounds || {}) };
   const districtRows = mapData.districts || [];
   const totalProjects = Number(data?.summary?.total_projects || 0);
   const geocodedCount = districtRows.reduce((sum, row) => sum + Number(row.geocoded_count || 0), 0);
-  const missingCoordinates = Math.max(0, totalProjects - geocodedCount);
+  const missingCoordinates = missingProjects?.length ?? Math.max(0, totalProjects - geocodedCount);
   const districtCount = districtRows.filter((row) => Number(row.count || 0) > 0).length;
   const geocodedDistrictCount = districtRows.filter((row) => Number(row.geocoded_count || 0) > 0).length;
   const rankedDistricts = [...districtRows]
@@ -156,20 +159,40 @@ function ProjectsMapPanel({ data, isProvince, visibleProjects }) {
           <p className="text-xs text-ink-secondary mt-1">
             {isProvince ? `${data.province} project locations by district` : 'National project locations by province and district'}
           </p>
+          {selectedDistrictKey && (
+            <button
+              type="button"
+              onClick={onClearDistrict}
+              className="mt-2 inline-flex items-center rounded-control bg-pcpp-emerald/10 px-3 py-1.5 text-xs text-pcpp-emerald"
+            >
+              District selected: clear
+            </button>
+          )}
         </div>
-        <div className="grid grid-cols-3 gap-2 text-right">
-          <div className="bg-pcpp-mist rounded-control px-3 py-2">
-            <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(visibleProjects.length)}</div>
-            <div className="text-[11px] text-ink-secondary">visible points</div>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="grid grid-cols-3 gap-2 text-right">
+            <div className="bg-pcpp-mist rounded-control px-3 py-2">
+              <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(visibleProjects.length)}</div>
+              <div className="text-[11px] text-ink-secondary">visible points</div>
+            </div>
+            <div className="bg-pcpp-mist rounded-control px-3 py-2">
+              <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(geocodedCount)}</div>
+              <div className="text-[11px] text-ink-secondary">geocoded</div>
+            </div>
+            <div className="bg-pcpp-mist rounded-control px-3 py-2">
+              <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(missingCoordinates)}</div>
+              <div className="text-[11px] text-ink-secondary">missing</div>
+            </div>
           </div>
-          <div className="bg-pcpp-mist rounded-control px-3 py-2">
-            <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(geocodedCount)}</div>
-            <div className="text-[11px] text-ink-secondary">geocoded</div>
-          </div>
-          <div className="bg-pcpp-mist rounded-control px-3 py-2">
-            <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(missingCoordinates)}</div>
-            <div className="text-[11px] text-ink-secondary">missing</div>
-          </div>
+          <button
+            type="button"
+            onClick={onExportMissing}
+            disabled={!missingProjects?.length}
+            className="inline-flex items-center justify-center gap-2 rounded-control border border-pcpp-border bg-white px-3 py-2 text-xs font-medium text-ink-secondary hover:bg-pcpp-mist disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={14} strokeWidth={1.75} />
+            Export missing coordinates
+          </button>
         </div>
       </div>
 
@@ -263,8 +286,16 @@ function ProjectsMapPanel({ data, isProvince, visibleProjects }) {
             </p>
           </div>
           <div className="max-h-[420px] overflow-y-auto">
-            {rankedDistricts.map((district) => (
-              <div key={`${district.province}-${district.district}`} className="px-4 py-3 border-b border-pcpp-border last:border-0">
+            {rankedDistricts.map((district) => {
+              const selected = selectedDistrictKey === districtKey(district);
+
+              return (
+                <button
+                  key={`${district.province}-${district.district}`}
+                  type="button"
+                  onClick={() => onDistrictSelect(district)}
+                  className={`block w-full px-4 py-3 text-left border-b border-pcpp-border last:border-0 hover:bg-pcpp-mist ${selected ? 'bg-pcpp-emerald/10' : 'bg-white'}`}
+                >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-medium text-pcpp-pine">{district.district}</div>
@@ -285,8 +316,9 @@ function ProjectsMapPanel({ data, isProvince, visibleProjects }) {
                     style={{ width: `${district.count ? clamp((district.geocoded_count / district.count) * 100, 0, 100) : 0}%` }}
                   />
                 </div>
-              </div>
-            ))}
+                </button>
+              );
+            })}
             {rankedDistricts.length === 0 && (
               <div className="p-6 text-center text-sm text-ink-tertiary">
                 District data is not available for this scope.
@@ -303,7 +335,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState(null);
-  const [tableFilters, setTableFilters] = useState({ sector: '', lifecycle: '', trl: '', province: '' });
+  const [tableFilters, setTableFilters] = useState({ sector: '', lifecycle: '', trl: '', province: '', district: '' });
 
   useEffect(() => {
     analyticsAPI.getOverview()
@@ -323,13 +355,17 @@ export default function AnalyticsPage() {
   const provinceRows = data?.by_province || [];
   const projectRows = data?.projects || [];
   const mapProjectRows = data?.map?.projects || [];
+  const missingMapProjectRows = data?.map?.missing_projects || [];
 
   const filterOptions = useMemo(() => ({
     sectors: Array.from(new Set(projectRows.map(sectorBucket))).sort(),
     lifecycles: lifecycleOrder,
     trls: Array.from(new Set(projectRows.map((project) => project.trl_level).filter(Boolean))).sort((a, b) => Number(a) - Number(b)),
     provinces: Array.from(new Set(projectRows.map((project) => project.province || 'Unspecified'))).sort(),
-  }), [projectRows]);
+    districts: Array.from(new Set(projectRows
+      .filter((project) => !tableFilters.province || (project.province || 'Unspecified') === tableFilters.province)
+      .map((project) => project.district || 'Unspecified'))).sort(),
+  }), [projectRows, tableFilters.province]);
 
   const filteredProjects = useMemo(() => {
     return projectRows.filter((project) => matchesProjectFilters(project, activeFilter, tableFilters));
@@ -339,9 +375,29 @@ export default function AnalyticsPage() {
     return mapProjectRows.filter((project) => matchesProjectFilters(project, activeFilter, tableFilters));
   }, [activeFilter, mapProjectRows, tableFilters]);
 
+  const filteredMissingMapProjects = useMemo(() => {
+    return missingMapProjectRows.filter((project) => matchesProjectFilters(project, activeFilter, tableFilters));
+  }, [activeFilter, missingMapProjectRows, tableFilters]);
+
+  const selectedDistrictKey = tableFilters.district
+    ? `${tableFilters.province || (isProvince ? data?.province : 'Unspecified')}::${tableFilters.district}`
+    : '';
+
   const clearFilters = () => {
     setActiveFilter(null);
-    setTableFilters({ sector: '', lifecycle: '', trl: '', province: '' });
+    setTableFilters({ sector: '', lifecycle: '', trl: '', province: '', district: '' });
+  };
+
+  const clearDistrictFilter = () => {
+    setTableFilters((current) => ({ ...current, district: '' }));
+  };
+
+  const handleDistrictSelect = (district) => {
+    setTableFilters((current) => ({
+      ...current,
+      province: isProvince ? current.province : district.province,
+      district: district.district,
+    }));
   };
 
   const handleExport = () => {
@@ -361,6 +417,30 @@ export default function AnalyticsPage() {
     const link = document.createElement('a');
     link.href = url;
     link.download = `pcpp-analytics-${isProvince ? data.province : 'national'}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleMissingCoordinatesExport = () => {
+    const headers = ['Project', !isProvince && 'Province', 'District', 'City', 'Sector', 'Status', 'Latitude', 'Longitude', 'Cost', 'Funding gap'].filter(Boolean);
+    const rows = filteredMissingMapProjects.map((project) => ([
+      project.title,
+      !isProvince && (project.province || 'Unspecified'),
+      project.district || 'Unspecified',
+      project.city || '',
+      project.primary_sector || 'Unspecified',
+      project.status?.replace(/_/g, ' ') || '',
+      project.latitude ?? '',
+      project.longitude ?? '',
+      project.total_cost || 0,
+      project.funding_gap || 0,
+    ].filter((cell) => cell !== false)));
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pcpp-missing-coordinates-${isProvince ? data.province : 'national'}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -465,7 +545,16 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      <ProjectsMapPanel data={data} isProvince={isProvince} visibleProjects={visibleMapProjects} />
+      <ProjectsMapPanel
+        data={data}
+        isProvince={isProvince}
+        visibleProjects={visibleMapProjects}
+        missingProjects={filteredMissingMapProjects}
+        selectedDistrictKey={selectedDistrictKey}
+        onDistrictSelect={handleDistrictSelect}
+        onClearDistrict={clearDistrictFilter}
+        onExportMissing={handleMissingCoordinatesExport}
+      />
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
         <ChartPanel title="WEF nexus" caption="Water, energy, and food balance across the portfolio." empty={emptyChart(sectorRows)}>
@@ -580,7 +669,7 @@ export default function AnalyticsPage() {
               Export CSV
             </button>
           </div>
-          <div className="grid md:grid-cols-4 gap-3">
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-3">
             <select
               className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
               value={tableFilters.sector}
@@ -615,6 +704,26 @@ export default function AnalyticsPage() {
                 {filterOptions.provinces.map((province) => <option key={province} value={province}>{province}</option>)}
               </select>
             ) : (
+              <select
+                className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
+                value={tableFilters.district}
+                onChange={(event) => setTableFilters((current) => ({ ...current, district: event.target.value }))}
+              >
+                <option value="">All districts</option>
+                {filterOptions.districts.map((district) => <option key={district} value={district}>{district}</option>)}
+              </select>
+            )}
+            {!isProvince && (
+              <select
+                className="px-3 py-2 border border-pcpp-border rounded-control text-sm text-ink-secondary bg-white focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
+                value={tableFilters.district}
+                onChange={(event) => setTableFilters((current) => ({ ...current, district: event.target.value }))}
+              >
+                <option value="">All districts</option>
+                {filterOptions.districts.map((district) => <option key={district} value={district}>{district}</option>)}
+              </select>
+            )}
+            {isProvince && (
               <button
                 type="button"
                 onClick={clearFilters}

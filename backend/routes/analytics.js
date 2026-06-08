@@ -47,6 +47,7 @@ async function overview(req, res) {
       provinceRank,
       mapDistricts,
       mapProjects,
+      missingMapProjects,
     ] = await Promise.all([
       pool.query(`
         SELECT
@@ -119,7 +120,6 @@ async function overview(req, res) {
         FROM projects p
         ${where}
         ORDER BY COALESCE(total_cost, 0) DESC, title ASC
-        LIMIT 250
       `, params),
       scope === 'national'
         ? pool.query(`
@@ -187,6 +187,23 @@ async function overview(req, res) {
           AND latitude BETWEEN 23 AND 38
           AND longitude BETWEEN 60 AND 78
         ORDER BY COALESCE(total_cost, 0) DESC, title ASC
+      `, params),
+      pool.query(`
+        SELECT id, title, province, district, city, primary_sector, status, trl_level,
+               latitude, longitude,
+               COALESCE(total_cost, 0) AS total_cost,
+               COALESCE(funding_gap, 0) AS funding_gap
+        FROM projects p
+        ${where}
+          AND (
+            latitude IS NULL
+            OR longitude IS NULL
+            OR latitude NOT BETWEEN 23 AND 38
+            OR longitude NOT BETWEEN 60 AND 78
+          )
+        ORDER BY COALESCE(province, 'Unspecified') ASC,
+                 COALESCE(district, 'Unspecified') ASC,
+                 title ASC
       `, params),
     ]);
 
@@ -264,6 +281,13 @@ async function overview(req, res) {
           ...p,
           latitude: toNumber(p.latitude),
           longitude: toNumber(p.longitude),
+          total_cost: toNumber(p.total_cost),
+          funding_gap: toNumber(p.funding_gap),
+        })),
+        missing_projects: missingMapProjects.rows.map((p) => ({
+          ...p,
+          latitude: p.latitude === null ? null : toNumber(p.latitude),
+          longitude: p.longitude === null ? null : toNumber(p.longitude),
           total_cost: toNumber(p.total_cost),
           funding_gap: toNumber(p.funding_gap),
         })),

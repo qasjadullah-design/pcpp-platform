@@ -49,6 +49,7 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
   - Admin/superadmin receive the national coordinate set; provincial users receive only their own province through existing server-side province scoping.
   - Analytics page now shows a token-styled project map with district coverage stats, visible/geocoded/missing-coordinate counts, WEF-colored project points, and hover/focus tooltips with title, province/district, sector, status, lat/long, cost, and funding gap.
   - Existing analytics filters now also filter the visible map points.
+  - Follow-up: analytics now also returns role-scoped `map.missing_projects`, removes the 250-row analytics drill-down cap, adds district filters/clickable district coverage rows, and exports the filtered missing-coordinate QA list as CSV.
 
 - `latest Align backend deploy entrypoint`
   - `backend/package.json` now starts `node server.js` instead of `node src/server.js`.
