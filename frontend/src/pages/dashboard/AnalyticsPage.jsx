@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { BarChart3, CircleDollarSign, Download, FolderOpen, RefreshCw, Wallet } from 'lucide-react';
+import { BarChart3, CircleDollarSign, Download, FolderOpen, LocateFixed, Map as MapIcon, MapPin, RefreshCw, Wallet } from 'lucide-react';
 import { analyticsAPI } from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { formatCurrency } from '../../utils/constants';
@@ -54,6 +54,36 @@ const parsedValue = (ctx) => {
   if (typeof ctx.parsed?.x === 'number') return ctx.parsed.x;
   if (typeof ctx.parsed?.y === 'number') return ctx.parsed.y;
   return 0;
+};
+
+const mapFallbackBounds = {
+  min_latitude: 23,
+  max_latitude: 38,
+  min_longitude: 60,
+  max_longitude: 78,
+};
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const coordinatePercent = (value, min, max) => {
+  if (max === min) return 50;
+  return clamp(((value - min) / (max - min)) * 100, 3, 97);
+};
+
+const pointSize = (project) => clamp(8 + Math.log10(Number(project.total_cost || 0) + 1) * 1.8, 9, 22);
+
+const statusLabel = (status) => (status || 'unspecified').replace(/_/g, ' ');
+
+const matchesProjectFilters = (project, activeFilter, tableFilters) => {
+  if (activeFilter?.type === 'sector' && sectorBucket(project) !== activeFilter.value) return false;
+  if (activeFilter?.type === 'lifecycle' && lifecycleBucket(project) !== activeFilter.value) return false;
+  if (activeFilter?.type === 'province' && (project.province || 'Unspecified') !== activeFilter.value) return false;
+  if (activeFilter?.type === 'trl' && Number(project.trl_level) !== Number(activeFilter.value)) return false;
+  if (tableFilters.sector && sectorBucket(project) !== tableFilters.sector) return false;
+  if (tableFilters.lifecycle && lifecycleBucket(project) !== tableFilters.lifecycle) return false;
+  if (tableFilters.trl && Number(project.trl_level) !== Number(tableFilters.trl)) return false;
+  if (tableFilters.province && (project.province || 'Unspecified') !== tableFilters.province) return false;
+  return true;
 };
 
 function chartBaseOptions(extra = {}) {
@@ -102,6 +132,173 @@ function ChartPanel({ title, caption, children, empty }) {
   );
 }
 
+function ProjectsMapPanel({ data, isProvince, visibleProjects }) {
+  const mapData = data?.map || {};
+  const bounds = { ...mapFallbackBounds, ...(mapData.bounds || {}) };
+  const districtRows = mapData.districts || [];
+  const totalProjects = Number(data?.summary?.total_projects || 0);
+  const geocodedCount = districtRows.reduce((sum, row) => sum + Number(row.geocoded_count || 0), 0);
+  const missingCoordinates = Math.max(0, totalProjects - geocodedCount);
+  const districtCount = districtRows.filter((row) => Number(row.count || 0) > 0).length;
+  const geocodedDistrictCount = districtRows.filter((row) => Number(row.geocoded_count || 0) > 0).length;
+  const rankedDistricts = [...districtRows]
+    .sort((a, b) => Number(b.count || 0) - Number(a.count || 0))
+    .slice(0, 12);
+
+  return (
+    <section className="bg-pcpp-card border border-pcpp-border rounded-card p-5 mb-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-5">
+        <div>
+          <h2 className="text-lg font-semibold text-pcpp-pine flex items-center gap-2">
+            <MapIcon size={18} strokeWidth={1.75} className="text-pcpp-emerald" />
+            Project map
+          </h2>
+          <p className="text-xs text-ink-secondary mt-1">
+            {isProvince ? `${data.province} project locations by district` : 'National project locations by province and district'}
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-right">
+          <div className="bg-pcpp-mist rounded-control px-3 py-2">
+            <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(visibleProjects.length)}</div>
+            <div className="text-[11px] text-ink-secondary">visible points</div>
+          </div>
+          <div className="bg-pcpp-mist rounded-control px-3 py-2">
+            <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(geocodedCount)}</div>
+            <div className="text-[11px] text-ink-secondary">geocoded</div>
+          </div>
+          <div className="bg-pcpp-mist rounded-control px-3 py-2">
+            <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(missingCoordinates)}</div>
+            <div className="text-[11px] text-ink-secondary">missing</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
+        <div className="relative min-h-[420px] rounded-card border border-pcpp-border bg-pcpp-mist">
+          <div
+            className="absolute inset-0 rounded-card"
+            style={{
+              backgroundImage: `linear-gradient(${TOKENS.border} 1px, transparent 1px), linear-gradient(90deg, ${TOKENS.border} 1px, transparent 1px)`,
+              backgroundSize: '40px 40px',
+            }}
+          />
+          <div className="absolute inset-4 rounded-card border border-pcpp-border bg-white/60" />
+          <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-control bg-white px-3 py-2 text-xs text-ink-secondary shadow-sm">
+            <LocateFixed size={14} strokeWidth={1.75} className="text-pcpp-emerald" />
+            Lat {bounds.min_latitude}-{bounds.max_latitude}, Long {bounds.min_longitude}-{bounds.max_longitude}
+          </div>
+          <div className="absolute bottom-5 left-5 flex flex-wrap gap-2 rounded-control bg-white px-3 py-2 shadow-sm">
+            {['Water', 'Energy', 'Food', 'Other'].map((sector) => (
+              <span key={sector} className="inline-flex items-center gap-1.5 text-[11px] text-ink-secondary">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: wefColor(sector) }} />
+                {sector}
+              </span>
+            ))}
+          </div>
+
+          {visibleProjects.map((project) => {
+            const latitude = Number(project.latitude);
+            const longitude = Number(project.longitude);
+            const left = coordinatePercent(longitude, bounds.min_longitude, bounds.max_longitude);
+            const top = 100 - coordinatePercent(latitude, bounds.min_latitude, bounds.max_latitude);
+            const size = pointSize(project);
+            const sector = sectorBucket(project);
+
+            return (
+              <div
+                key={project.id}
+                className="absolute z-10 -translate-x-1/2 -translate-y-1/2 group"
+                style={{ left: `${left}%`, top: `${top}%` }}
+              >
+                <button
+                  type="button"
+                  aria-label={project.title}
+                  className="block rounded-full border-2 border-white shadow-sm ring-1 ring-pcpp-pine/10 transition hover:scale-125 hover:ring-2 hover:ring-pcpp-emerald focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
+                  style={{ width: size, height: size, backgroundColor: wefColor(sector) }}
+                />
+                <div className="pointer-events-none absolute left-1/2 bottom-full z-30 mb-3 hidden w-72 -translate-x-1/2 rounded-card border border-pcpp-border bg-white p-3 text-left shadow-lg group-hover:block group-focus-within:block">
+                  <div className="text-sm font-semibold text-pcpp-pine leading-snug">{project.title}</div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] text-ink-secondary">
+                    <span>District</span>
+                    <span className="font-medium text-ink">{project.district || 'Unspecified'}</span>
+                    {!isProvince && (
+                      <>
+                        <span>Province</span>
+                        <span className="font-medium text-ink">{project.province || 'Unspecified'}</span>
+                      </>
+                    )}
+                    <span>Sector</span>
+                    <span className="font-medium text-ink">{project.primary_sector || sector}</span>
+                    <span>Status</span>
+                    <span className="font-medium text-ink capitalize">{statusLabel(project.status)}</span>
+                    <span>Position</span>
+                    <span className="font-medium text-ink tabular-nums">{latitude.toFixed(4)}, {longitude.toFixed(4)}</span>
+                    <span>Cost</span>
+                    <span className="font-medium text-ink tabular-nums">{formatCurrency(project.total_cost)}</span>
+                    <span>Gap</span>
+                    <span className="font-medium text-ink tabular-nums">{formatCurrency(project.funding_gap)}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {visibleProjects.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="rounded-card border border-pcpp-border bg-white px-4 py-3 text-sm text-ink-secondary shadow-sm">
+                No mapped project points match the current filters.
+              </div>
+            </div>
+          )}
+        </div>
+
+        <aside className="rounded-card border border-pcpp-border bg-white overflow-hidden">
+          <div className="p-4 border-b border-pcpp-border">
+            <h3 className="text-sm font-semibold text-pcpp-pine flex items-center gap-2">
+              <MapPin size={16} strokeWidth={1.75} className="text-pcpp-emerald" />
+              District coverage
+            </h3>
+            <p className="text-xs text-ink-secondary mt-1">
+              {num(geocodedDistrictCount)} of {num(districtCount)} districts have mapped project coordinates.
+            </p>
+          </div>
+          <div className="max-h-[420px] overflow-y-auto">
+            {rankedDistricts.map((district) => (
+              <div key={`${district.province}-${district.district}`} className="px-4 py-3 border-b border-pcpp-border last:border-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-pcpp-pine">{district.district}</div>
+                    {!isProvince && <div className="text-[11px] text-ink-secondary">{district.province}</div>}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-pcpp-pine tabular-nums">{num(district.count)}</div>
+                    <div className="text-[11px] text-ink-secondary">projects</div>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-ink-secondary">
+                  <span>{num(district.geocoded_count)} mapped</span>
+                  <span className="tabular-nums">{formatCurrency(district.investment)}</span>
+                </div>
+                <div className="mt-2 h-1.5 rounded-full bg-pcpp-mist overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-pcpp-emerald"
+                    style={{ width: `${district.count ? clamp((district.geocoded_count / district.count) * 100, 0, 100) : 0}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+            {rankedDistricts.length === 0 && (
+              <div className="p-6 text-center text-sm text-ink-tertiary">
+                District data is not available for this scope.
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,6 +322,7 @@ export default function AnalyticsPage() {
   const trlRows = data?.by_trl || [];
   const provinceRows = data?.by_province || [];
   const projectRows = data?.projects || [];
+  const mapProjectRows = data?.map?.projects || [];
 
   const filterOptions = useMemo(() => ({
     sectors: Array.from(new Set(projectRows.map(sectorBucket))).sort(),
@@ -134,22 +332,12 @@ export default function AnalyticsPage() {
   }), [projectRows]);
 
   const filteredProjects = useMemo(() => {
-    return projectRows.filter((project) => {
-      if (activeFilter?.type === 'sector') {
-        if (sectorBucket(project) !== activeFilter.value) return false;
-      }
-      if (activeFilter?.type === 'lifecycle') {
-        if (lifecycleBucket(project) !== activeFilter.value) return false;
-      }
-      if (activeFilter?.type === 'province' && (project.province || 'Unspecified') !== activeFilter.value) return false;
-      if (activeFilter?.type === 'trl' && Number(project.trl_level) !== Number(activeFilter.value)) return false;
-      if (tableFilters.sector && sectorBucket(project) !== tableFilters.sector) return false;
-      if (tableFilters.lifecycle && lifecycleBucket(project) !== tableFilters.lifecycle) return false;
-      if (tableFilters.trl && Number(project.trl_level) !== Number(tableFilters.trl)) return false;
-      if (tableFilters.province && (project.province || 'Unspecified') !== tableFilters.province) return false;
-      return true;
-    });
+    return projectRows.filter((project) => matchesProjectFilters(project, activeFilter, tableFilters));
   }, [activeFilter, projectRows, tableFilters]);
+
+  const visibleMapProjects = useMemo(() => {
+    return mapProjectRows.filter((project) => matchesProjectFilters(project, activeFilter, tableFilters));
+  }, [activeFilter, mapProjectRows, tableFilters]);
 
   const clearFilters = () => {
     setActiveFilter(null);
@@ -276,6 +464,8 @@ export default function AnalyticsPage() {
           </button>
         </div>
       )}
+
+      <ProjectsMapPanel data={data} isProvince={isProvince} visibleProjects={visibleMapProjects} />
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
         <ChartPanel title="WEF nexus" caption="Water, energy, and food balance across the portfolio." empty={emptyChart(sectorRows)}>

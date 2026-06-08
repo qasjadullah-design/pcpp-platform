@@ -45,6 +45,8 @@ async function overview(req, res) {
       projects,
       byProvince,
       provinceRank,
+      mapDistricts,
+      mapProjects,
     ] = await Promise.all([
       pool.query(`
         SELECT
@@ -144,6 +146,48 @@ async function overview(req, res) {
           WHERE province = $1
         `, [req.user.province])
         : Promise.resolve({ rows: [] }),
+      pool.query(`
+        SELECT
+          COALESCE(province, 'Unspecified') AS province,
+          COALESCE(district, 'Unspecified') AS district,
+          COUNT(*) AS count,
+          COALESCE(SUM(total_cost), 0) AS investment,
+          COUNT(*) FILTER (
+            WHERE latitude IS NOT NULL
+              AND longitude IS NOT NULL
+              AND latitude BETWEEN 23 AND 38
+              AND longitude BETWEEN 60 AND 78
+          ) AS geocoded_count,
+          AVG(latitude) FILTER (
+            WHERE latitude IS NOT NULL
+              AND longitude IS NOT NULL
+              AND latitude BETWEEN 23 AND 38
+              AND longitude BETWEEN 60 AND 78
+          ) AS latitude,
+          AVG(longitude) FILTER (
+            WHERE latitude IS NOT NULL
+              AND longitude IS NOT NULL
+              AND latitude BETWEEN 23 AND 38
+              AND longitude BETWEEN 60 AND 78
+          ) AS longitude
+        FROM projects p
+        ${where}
+        GROUP BY COALESCE(province, 'Unspecified'), COALESCE(district, 'Unspecified')
+        ORDER BY count DESC, district ASC
+      `, params),
+      pool.query(`
+        SELECT id, title, province, district, primary_sector, status, trl_level,
+               latitude, longitude,
+               COALESCE(total_cost, 0) AS total_cost,
+               COALESCE(funding_gap, 0) AS funding_gap
+        FROM projects p
+        ${where}
+          AND latitude IS NOT NULL
+          AND longitude IS NOT NULL
+          AND latitude BETWEEN 23 AND 38
+          AND longitude BETWEEN 60 AND 78
+        ORDER BY COALESCE(total_cost, 0) DESC, title ASC
+      `, params),
     ]);
 
     const row = summary.rows[0] || {};
@@ -200,6 +244,30 @@ async function overview(req, res) {
         total_cost: toNumber(p.total_cost),
         funding_gap: toNumber(p.funding_gap),
       })),
+      map: {
+        bounds: {
+          min_latitude: 23,
+          max_latitude: 38,
+          min_longitude: 60,
+          max_longitude: 78,
+        },
+        districts: mapDistricts.rows.map((d) => ({
+          province: d.province,
+          district: d.district,
+          count: toInt(d.count),
+          investment: toNumber(d.investment),
+          geocoded_count: toInt(d.geocoded_count),
+          latitude: d.latitude === null ? null : toNumber(d.latitude),
+          longitude: d.longitude === null ? null : toNumber(d.longitude),
+        })),
+        projects: mapProjects.rows.map((p) => ({
+          ...p,
+          latitude: toNumber(p.latitude),
+          longitude: toNumber(p.longitude),
+          total_cost: toNumber(p.total_cost),
+          funding_gap: toNumber(p.funding_gap),
+        })),
+      },
     });
   } catch (err) {
     console.error(err);

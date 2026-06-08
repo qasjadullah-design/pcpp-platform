@@ -44,6 +44,12 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `latest Add analytics project map`
+  - `/api/analytics/overview` now returns a role-scoped `map` payload with district aggregates and project latitude/longitude points.
+  - Admin/superadmin receive the national coordinate set; provincial users receive only their own province through existing server-side province scoping.
+  - Analytics page now shows a token-styled project map with district coverage stats, visible/geocoded/missing-coordinate counts, WEF-colored project points, and hover/focus tooltips with title, province/district, sector, status, lat/long, cost, and funding gap.
+  - Existing analytics filters now also filter the visible map points.
+
 - `latest Align backend deploy entrypoint`
   - `backend/package.json` now starts `node server.js` instead of `node src/server.js`.
   - `backend/Dockerfile` now runs `server.js`.
@@ -195,15 +201,15 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 6. Current Focus / Next Actions
 
-The current UI thread is registration and role-specific investor experience.
+The current UI thread is analytics geography and role-specific portfolio visibility.
 
-Recommended next step: verify the live investor signup/login, save, interest, owner-reply, and notification paths on Render.
+Recommended next step: after deployment, verify the live analytics map for both admin and provincial users.
 
-1. Register a test investor from `/register`; confirm DB role is `investor`, status is `active`, and login lands on `/dashboard`.
-2. Save an approved project from its detail page; confirm it appears in `/dashboard/saved`.
-3. Express interest in an approved project; confirm `/dashboard/interests` and owner notification update.
-4. Login as the project owner; open the notification and confirm My Projects auto-opens the correct interest panel.
-5. Open `/dashboard/notifications`; mark one and all notifications read.
+1. Login as admin/superadmin and open `/dashboard/analytics`; confirm the map shows national project points and district coverage.
+2. Hover/focus several points and confirm tooltip title, province/district, status, lat/long, cost, and funding gap are correct.
+3. Use chart/table filters for sector, lifecycle, TRL, and province; confirm map points filter with the rest of the analytics page.
+4. Login as a provincial user and confirm the same page only shows that user's province.
+5. Use the missing-coordinate count as the next cleanup queue for projects without valid latitude/longitude.
 
 ## 7. Provincial Permission Model - Current Understanding
 
