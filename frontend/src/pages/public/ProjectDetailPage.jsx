@@ -9,11 +9,23 @@ import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import Tooltip from '../../components/common/Tooltip';
 import { STATUS_COLORS, SDG_GOALS, TRL_LEVELS } from '../../utils/constants';
+import { TOKENS } from '../../utils/designTokens';
 import { trlText } from '../../utils/trl';
 import toast from 'react-hot-toast';
 import { Bookmark, Building2, ClipboardList, Droplet, Globe2, Landmark, Leaf, Mail, MapPin, Phone, Zap } from 'lucide-react';
 
 const TABS = ['Overview','Financial','Team','Documents','Updates','Gallery'];
+
+const hasValidCoordinates = (project) => {
+  const latitude = Number(project?.latitude);
+  const longitude = Number(project?.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= 23 && latitude <= 38 && longitude >= 60 && longitude <= 78;
+};
+
+const coordinatePercent = (value, min, max) => {
+  if (max === min) return 50;
+  return Math.min(96, Math.max(4, ((value - min) / (max - min)) * 100));
+};
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -313,6 +325,34 @@ export default function ProjectDetailPage() {
               </div>
             ))}
           </div>
+
+          {hasValidCoordinates(project) && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <MapPin size={18} strokeWidth={1.75} className="text-pcpp-emerald" />
+                Project Location
+              </h3>
+              <div className="relative h-40 rounded-xl border border-gray-200 bg-pcpp-mist overflow-hidden">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `linear-gradient(${TOKENS.border} 1px, transparent 1px), linear-gradient(90deg, ${TOKENS.border} 1px, transparent 1px)`,
+                    backgroundSize: '30px 30px',
+                  }}
+                />
+                <span
+                  className="absolute z-10 w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-pcpp-emerald border-2 border-white shadow"
+                  style={{
+                    left: `${coordinatePercent(Number(project.longitude), 60, 78)}%`,
+                    top: `${100 - coordinatePercent(Number(project.latitude), 23, 38)}%`,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-3 tabular-nums">
+                {Number(project.latitude).toFixed(5)}, {Number(project.longitude).toFixed(5)}
+              </p>
+            </div>
+          )}
 
           <div className="bg-emerald-600 text-white rounded-2xl p-5">
             <h3 className="font-semibold mb-1">Invest in this Project</h3>

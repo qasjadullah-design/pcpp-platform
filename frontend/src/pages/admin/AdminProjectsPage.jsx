@@ -4,9 +4,10 @@ import { adminAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import { STATUS_COLORS, SECTORS, PROVINCES, getDistricts, formatCurrency } from '../../utils/constants';
+import { TOKENS } from '../../utils/designTokens';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, CheckCircle, ExternalLink, FolderOpen, MapPin, RotateCw, X, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, CheckCircle, ExternalLink, FolderOpen, MapPin, RotateCw, Save, X, XCircle } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
@@ -17,6 +18,7 @@ const DEFAULT_FILTERS = {
   province: '',
   district: '',
   priority: '',
+  coordinate_status: '',
   sort_by: 'created_at',
   sort_dir: 'desc',
   page: 1,
@@ -48,6 +50,7 @@ const QUICK_FILTERS = [
   { label: 'Approved', status: 'approved', priority: '' },
   { label: 'Archived', status: 'archived', priority: '' },
   { label: 'High Priority', status: '', priority: 'high_or_critical' },
+  { label: 'Missing Coordinates', status: '', priority: '', coordinate_status: 'missing' },
 ];
 
 const DRAWER_REVIEW_ACTIONS = [
@@ -77,6 +80,7 @@ const getFiltersFromSearchParams = (searchParams) => ({
   province: searchParams.get('province') || '',
   district: searchParams.get('district') || '',
   priority: searchParams.get('priority') || '',
+  coordinate_status: searchParams.get('coordinate_status') || '',
   sort_by: searchParams.get('sort_by') || DEFAULT_FILTERS.sort_by,
   sort_dir: searchParams.get('sort_dir') === 'asc' ? 'asc' : DEFAULT_FILTERS.sort_dir,
   page: Math.max(1, Number(searchParams.get('page')) || 1),
@@ -119,6 +123,21 @@ const DetailStat = ({ label, value }) => (
   </div>
 );
 
+const hasValidCoordinates = (project) => {
+  const latitude = Number(project?.latitude);
+  const longitude = Number(project?.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= 23 && latitude <= 38 && longitude >= 60 && longitude <= 78;
+};
+
+const coordinatePercent = (value, min, max) => {
+  if (max === min) return 50;
+  return Math.min(96, Math.max(4, ((value - min) / (max - min)) * 100));
+};
+
+const coordinateText = (project) => hasValidCoordinates(project)
+  ? `${Number(project.latitude).toFixed(5)}, ${Number(project.longitude).toFixed(5)}`
+  : 'Missing coordinates';
+
 export default function AdminProjectsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamsString = searchParams.toString();
@@ -138,6 +157,8 @@ export default function AdminProjectsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewBusy, setReviewBusy] = useState('');
+  const [coordinateForm, setCoordinateForm] = useState({ latitude: '', longitude: '' });
+  const [coordinateBusy, setCoordinateBusy] = useState(false);
 
   const fetchProjects = () => {
     setLoading(true);
@@ -208,11 +229,19 @@ export default function AdminProjectsPage() {
   const openDetailDrawer = async (project) => {
     setDetailProject(project);
     setReviewNotes('');
+    setCoordinateForm({
+      latitude: project.latitude ?? '',
+      longitude: project.longitude ?? '',
+    });
     setDetailLoading(true);
     try {
       const detail = await adminAPI.getProject(project.id);
       setDetailProject(detail);
       setReviewNotes(detail.admin_feedback || detail.admin_notes || '');
+      setCoordinateForm({
+        latitude: detail.latitude ?? '',
+        longitude: detail.longitude ?? '',
+      });
     } catch (e) {
       toast.error(e.message || 'Failed to load project details');
     } finally {
@@ -221,6 +250,38 @@ export default function AdminProjectsPage() {
   };
 
   const closeDetailDrawer = () => setDetailProject(null);
+
+  const handleCoordinateSave = async () => {
+    if (!detailProject) return;
+    const latitude = coordinateForm.latitude === '' ? null : Number(coordinateForm.latitude);
+    const longitude = coordinateForm.longitude === '' ? null : Number(coordinateForm.longitude);
+
+    if ((latitude === null && longitude !== null) || (latitude !== null && longitude === null)) {
+      toast.error('Latitude and longitude must be saved together');
+      return;
+    }
+    if (latitude !== null && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) {
+      toast.error('Latitude and longitude must be valid numbers');
+      return;
+    }
+    if (latitude !== null && (latitude < 23 || latitude > 38 || longitude < 60 || longitude > 78)) {
+      toast.error('Coordinates must be within Pakistan map bounds');
+      return;
+    }
+
+    setCoordinateBusy(true);
+    try {
+      const updated = await adminAPI.updateProjectCoordinates(detailProject.id, { latitude, longitude });
+      setDetailProject(p => ({ ...p, ...updated }));
+      setProjects(list => list.map(project => project.id === detailProject.id ? { ...project, latitude: updated.latitude, longitude: updated.longitude } : project));
+      toast.success(latitude === null ? 'Coordinates cleared' : 'Coordinates saved');
+      fetchProjects();
+    } catch (e) {
+      toast.error(e.message || 'Failed to save coordinates');
+    } finally {
+      setCoordinateBusy(false);
+    }
+  };
 
   const handleDrawerReview = async (action) => {
     if (!detailProject) return;
@@ -248,10 +309,16 @@ export default function AdminProjectsPage() {
   };
 
   const applyQuickFilter = (preset) => {
-    setFilters(f => ({ ...f, status: preset.status, priority: preset.priority, page: 1 }));
+    setFilters(f => ({
+      ...f,
+      status: preset.status,
+      priority: preset.priority,
+      coordinate_status: preset.coordinate_status || '',
+      page: 1,
+    }));
   };
 
-  const quickFilterActive = (preset) => filters.status === preset.status && filters.priority === preset.priority;
+  const quickFilterActive = (preset) => filters.status === preset.status && filters.priority === preset.priority && filters.coordinate_status === (preset.coordinate_status || '');
 
   const handleSort = (sortBy) => {
     setFilters(f => ({
@@ -375,10 +442,10 @@ export default function AdminProjectsPage() {
             <X size={14} strokeWidth={1.75} />
           </button>
         )}
-        {(filters.status || filters.priority || filters.province || filters.district || filters.sector || filters.search) && (
+        {(filters.status || filters.priority || filters.coordinate_status || filters.province || filters.district || filters.sector || filters.search) && (
           <button
             type="button"
-            onClick={() => setFilters(f => ({ ...f, search: '', status: '', sector: '', province: '', district: '', priority: '', page: 1 }))}
+            onClick={() => setFilters(f => ({ ...f, search: '', status: '', sector: '', province: '', district: '', priority: '', coordinate_status: '', page: 1 }))}
             className="px-3 py-1.5 rounded-full text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100"
           >
             Clear filters
@@ -409,6 +476,11 @@ export default function AdminProjectsPage() {
           <select disabled={!filters.province} className={`px-3 py-2 border border-gray-300 rounded-lg text-sm ${!filters.province ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`} value={filters.district} onChange={e=>setFilters(f=>({...f,district:e.target.value,page:1}))}>
             <option value="">{filters.province ? 'All Districts' : 'Select Province First'}</option>
             {districtOptions.map(d=><option key={d} value={d}>{d}</option>)}
+          </select>
+          <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm" value={filters.coordinate_status} onChange={e=>setFilters(f=>({...f,coordinate_status:e.target.value,page:1}))}>
+            <option value="">All Coordinates</option>
+            <option value="missing">Missing Coordinates</option>
+            <option value="valid">Mapped Coordinates</option>
           </select>
           <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden">
             {['comfortable','compact'].map(mode => (
@@ -472,7 +544,14 @@ export default function AdminProjectsPage() {
                     <td className={cellClass}><div className="font-medium text-gray-900 leading-snug">{p.title}</div><div className="text-xs text-gray-400">ID: {p.id.slice(0,8)}</div></td>
                     <td className={`${cellClass} text-gray-600`}>{p.organization_name}</td>
                     <td className={`${cellClass} text-gray-600`}>{p.primary_sector}</td>
-                    <td className={`${cellClass} text-gray-600`}><div>{p.province || 'Unspecified'}</div><div className="text-xs text-gray-400">{p.district || 'No district'}</div></td>
+                    <td className={`${cellClass} text-gray-600`}>
+                      <div>{p.province || 'Unspecified'}</div>
+                      <div className="text-xs text-gray-400">{p.district || 'No district'}</div>
+                      <div className={`mt-1 inline-flex items-center gap-1 text-[11px] ${hasValidCoordinates(p) ? 'text-emerald-700' : 'text-yellow-700'}`}>
+                        {hasValidCoordinates(p) ? <MapPin size={12} strokeWidth={1.75} /> : <AlertTriangle size={12} strokeWidth={1.75} />}
+                        {hasValidCoordinates(p) ? 'Mapped' : 'Missing coordinates'}
+                      </div>
+                    </td>
                     <td className={cellClass}><Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status]||'gray'} dot/></td>
                     <td className={`${cellClass} text-gray-600 whitespace-nowrap`}>{formatCurrency(p.total_cost)}</td>
                     <td className={`${cellClass} text-gray-600 whitespace-nowrap`}>{formatDate(p.created_at)}</td>
@@ -584,6 +663,93 @@ export default function AdminProjectsPage() {
                 <DetailRow label="City" value={detailProject.city} />
                 <DetailRow label="Priority" value={detailProject.priority_level} />
                 <DetailRow label="Risk" value={detailProject.risk_level} />
+              </section>
+
+              <section className="border border-emerald-100 bg-emerald-50 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      <MapPin size={16} strokeWidth={1.75} className="text-emerald-700" />
+                      Map Coordinates
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">Valid bounds: latitude 23-38, longitude 60-78.</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs ${hasValidCoordinates(coordinateForm) ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {hasValidCoordinates(coordinateForm) ? <MapPin size={13} strokeWidth={1.75} /> : <AlertTriangle size={13} strokeWidth={1.75} />}
+                    {hasValidCoordinates(coordinateForm) ? 'Ready for map' : 'Needs coordinates'}
+                  </span>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      min="23"
+                      max="38"
+                      className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      value={coordinateForm.latitude}
+                      onChange={e => setCoordinateForm(current => ({ ...current, latitude: e.target.value }))}
+                      placeholder="e.g. 33.6844"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      min="60"
+                      max="78"
+                      className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      value={coordinateForm.longitude}
+                      onChange={e => setCoordinateForm(current => ({ ...current, longitude: e.target.value }))}
+                      placeholder="e.g. 73.0479"
+                    />
+                  </div>
+                </div>
+                <div className="relative mt-4 h-36 rounded-xl border border-emerald-100 bg-white overflow-hidden">
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      backgroundImage: `linear-gradient(${TOKENS.border} 1px, transparent 1px), linear-gradient(90deg, ${TOKENS.border} 1px, transparent 1px)`,
+                      backgroundSize: '28px 28px',
+                    }}
+                  />
+                  {hasValidCoordinates(coordinateForm) ? (
+                    <span
+                      className="absolute z-10 w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600 border-2 border-white shadow"
+                      style={{
+                        left: `${coordinatePercent(Number(coordinateForm.longitude), 60, 78)}%`,
+                        top: `${100 - coordinatePercent(Number(coordinateForm.latitude), 23, 38)}%`,
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500">
+                      Enter valid coordinates to preview the project point.
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-gray-500">Current saved value: {coordinateText(detailProject)}</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCoordinateForm({ latitude: '', longitude: '' })}
+                      className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-xs text-gray-600 hover:bg-gray-50"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCoordinateSave}
+                      disabled={coordinateBusy}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      <Save size={14} strokeWidth={1.75} />
+                      {coordinateBusy ? 'Saving...' : 'Save Coordinates'}
+                    </button>
+                  </div>
+                </div>
               </section>
 
               <section>

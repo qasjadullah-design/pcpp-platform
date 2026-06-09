@@ -174,11 +174,52 @@ const PROJECT_SORT_COLUMNS = {
   status: 'p.status',
 };
 
+const validCoordinateWhere = `p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND p.latitude BETWEEN 23 AND 38 AND p.longitude BETWEEN 60 AND 78`;
+const missingCoordinateWhere = `(p.latitude IS NULL OR p.longitude IS NULL OR p.latitude NOT BETWEEN 23 AND 38 OR p.longitude NOT BETWEEN 60 AND 78)`;
+
 const projectOrderBy = (sortBy = 'created_at', sortDir = 'desc') => {
   const column = PROJECT_SORT_COLUMNS[sortBy] || PROJECT_SORT_COLUMNS.created_at;
   const direction = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
   return `${column} ${direction} NULLS LAST, p.created_at DESC`;
 };
+
+const parseCoordinate = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
+// Update admin-maintained project coordinates for map visibility
+router.put('/projects/:id/coordinates', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const latitude = parseCoordinate(req.body.latitude);
+    const longitude = parseCoordinate(req.body.longitude);
+
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      return res.status(400).json({ error: 'Latitude and longitude must be valid numbers' });
+    }
+
+    if ((latitude === null && longitude !== null) || (latitude !== null && longitude === null)) {
+      return res.status(400).json({ error: 'Latitude and longitude must be saved together' });
+    }
+
+    if (latitude !== null && (latitude < 23 || latitude > 38 || longitude < 60 || longitude > 78)) {
+      return res.status(400).json({ error: 'Coordinates must be within Pakistan map bounds' });
+    }
+
+    const result = await pool.query(
+      `UPDATE projects SET latitude = $1, longitude = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
+      [latitude, longitude, id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' });
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update coordinates' });
+  }
+});
 
 // Change a single project's status (powers the inline Approve/Archive buttons)
 router.put('/projects/:id/status', async (req, res) => {
@@ -251,7 +292,7 @@ router.get('/projects/:id/detail', async (req, res) => {
 // GET all projects (admin)
 router.get('/projects', async (req, res) => {
   try {
-    const { status, sector, province, district, priority, search, sort_by = 'created_at', sort_dir = 'desc', page = 1, limit = 15 } = req.query;
+    const { status, sector, province, district, priority, coordinate_status, search, sort_by = 'created_at', sort_dir = 'desc', page = 1, limit = 15 } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
@@ -266,6 +307,8 @@ router.get('/projects', async (req, res) => {
       conditions.push(`p.priority_level = $${idx++}`);
       params.push(priority);
     }
+    if (coordinate_status === 'missing') conditions.push(missingCoordinateWhere);
+    if (coordinate_status === 'valid') conditions.push(validCoordinateWhere);
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
       params.push(`%${search}%`);
@@ -280,6 +323,7 @@ router.get('/projects', async (req, res) => {
       pool.query(`
         SELECT p.id, p.project_code, p.title, p.primary_sector, p.province, p.district, p.status,
                p.total_cost, p.trl_level, p.created_at, p.priority_level, p.risk_level, p.organization_name,
+               p.latitude, p.longitude,
                u.first_name || ' ' || u.last_name AS owner_name, u.email AS owner_email
         FROM projects p LEFT JOIN users u ON p.user_id = u.id
         ${where} ORDER BY ${orderBy} LIMIT $${idx} OFFSET $${idx + 1}
@@ -306,7 +350,7 @@ router.get('/projects', async (req, res) => {
 // Export projects to Excel
 router.get('/projects/export', async (req, res) => {
   try {
-    const { status, sector, province, district, priority, search, ids, sort_by = 'created_at', sort_dir = 'desc' } = req.query;
+    const { status, sector, province, district, priority, coordinate_status, search, ids, sort_by = 'created_at', sort_dir = 'desc' } = req.query;
     const conditions = [];
     const params = [];
     let idx = 1;
@@ -325,6 +369,8 @@ router.get('/projects/export', async (req, res) => {
       conditions.push(`p.priority_level = $${idx++}`);
       params.push(priority);
     }
+    if (coordinate_status === 'missing') conditions.push(missingCoordinateWhere);
+    if (coordinate_status === 'valid') conditions.push(validCoordinateWhere);
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.organization_name ILIKE $${idx} OR p.primary_sector ILIKE $${idx})`);
       params.push(`%${search}%`);
@@ -338,6 +384,7 @@ router.get('/projects/export', async (req, res) => {
       SELECT p.project_code, p.title, p.primary_sector, p.province, p.district, p.city, p.status,
              p.total_cost, p.funding_gap, p.expected_roi, p.trl_level,
              p.direct_beneficiaries, p.jobs_created, p.organization_name,
+             p.latitude, p.longitude,
              p.created_at, u.email AS owner_email
       FROM projects p LEFT JOIN users u ON p.user_id = u.id
       ${where}
@@ -353,6 +400,8 @@ router.get('/projects/export', async (req, res) => {
       { header: 'Province', key: 'province', width: 20 },
       { header: 'District', key: 'district', width: 20 },
       { header: 'City', key: 'city', width: 20 },
+      { header: 'Latitude', key: 'latitude', width: 14 },
+      { header: 'Longitude', key: 'longitude', width: 14 },
       { header: 'Status', key: 'status', width: 15 },
       { header: 'Total Cost (PKR)', key: 'total_cost', width: 20 },
       { header: 'Funding Gap (PKR)', key: 'funding_gap', width: 20 },

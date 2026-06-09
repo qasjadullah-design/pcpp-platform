@@ -56,6 +56,7 @@ export const interestsAPI = {
 export const adminAPI = {
   reviewProject: (id, data) => api.put(`/admin/projects/${id}/review`, data),
   changeProjectStatus: (id, status) => api.put(`/admin/projects/${id}/status`, { status }),
+  updateProjectCoordinates: (id, data) => api.put(`/admin/projects/${id}/coordinates`, data),
   bulkChangeStatus: (ids, status) => api.put('/admin/projects/bulk-status', { ids, status }),
   getAnalytics: () => api.get('/admin/analytics'),
   getDashboard: () => api.get('/admin/dashboard'),
