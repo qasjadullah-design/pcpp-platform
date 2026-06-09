@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -9,7 +10,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { BarChart3, CircleDollarSign, Download, FolderOpen, LocateFixed, Map as MapIcon, MapPin, RefreshCw, Wallet } from 'lucide-react';
+import { BarChart3, CircleDollarSign, Download, ExternalLink, FolderOpen, LocateFixed, Map as MapIcon, MapPin, RefreshCw, Wallet } from 'lucide-react';
 import { analyticsAPI } from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { formatCurrency } from '../../utils/constants';
@@ -193,6 +194,15 @@ function ProjectsMapPanel({ data, isProvince, visibleProjects, missingProjects, 
             <Download size={14} strokeWidth={1.75} />
             Export missing coordinates
           </button>
+          {!isProvince && (
+            <Link
+              to="/admin/projects?coordinate_status=missing"
+              className="inline-flex items-center justify-center gap-2 rounded-control bg-pcpp-emerald px-3 py-2 text-xs font-medium text-white hover:bg-pcpp-emerald-600"
+            >
+              <ExternalLink size={14} strokeWidth={1.75} />
+              Fix in admin
+            </Link>
+          )}
         </div>
       </div>
 
@@ -233,8 +243,8 @@ function ProjectsMapPanel({ data, isProvince, visibleProjects, missingProjects, 
                 className="absolute z-10 -translate-x-1/2 -translate-y-1/2 group"
                 style={{ left: `${left}%`, top: `${top}%` }}
               >
-                <button
-                  type="button"
+                <Link
+                  to={`/projects/${project.id}`}
                   aria-label={project.title}
                   className="block rounded-full border-2 border-white shadow-sm ring-1 ring-pcpp-pine/10 transition hover:scale-125 hover:ring-2 hover:ring-pcpp-emerald focus:outline-none focus:ring-2 focus:ring-pcpp-emerald"
                   style={{ width: size, height: size, backgroundColor: wefColor(sector) }}
@@ -757,7 +767,11 @@ export default function AnalyticsPage() {
             <tbody>
               {filteredProjects.map((project) => (
                 <tr key={project.id} className="border-b border-pcpp-border last:border-0 hover:bg-pcpp-mist">
-                  <td className="px-4 py-3 font-medium text-pcpp-pine">{project.title}</td>
+                  <td className="px-4 py-3 font-medium text-pcpp-pine">
+                    <Link to={`/projects/${project.id}`} className="hover:text-pcpp-emerald hover:underline">
+                      {project.title}
+                    </Link>
+                  </td>
                   {!isProvince && <td className="px-4 py-3 text-ink-secondary">{project.province || 'Unspecified'}</td>}
                   <td className="px-4 py-3 text-ink-secondary">{project.primary_sector || 'Unspecified'}</td>
                   <td className="px-4 py-3 text-ink-secondary">{lifecycleBucket(project)}</td>
