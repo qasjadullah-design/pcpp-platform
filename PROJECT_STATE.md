@@ -48,6 +48,7 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
   - Admin list/export now supports `coordinate_status=missing|valid`; All Projects includes a Missing Coordinates quick filter and coordinate status indicator in the Province column.
   - Added `PUT /api/admin/projects/:id/coordinates` with validation for Pakistan map bounds: latitude 23-38 and longitude 60-78.
   - All Projects drawer now has editable latitude/longitude fields, validation, clear/save actions, and a token-styled coordinate preview.
+  - Follow-up: the drawer now supports current-page Previous/Next navigation and a Missing Coordinates queue-only Save & Next action.
   - Public project detail now shows a small location preview only when saved coordinates are valid.
 
 - `latest Add analytics project map`

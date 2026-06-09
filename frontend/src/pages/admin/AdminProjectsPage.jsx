@@ -7,7 +7,7 @@ import { STATUS_COLORS, SECTORS, PROVINCES, getDistricts, formatCurrency } from 
 import { TOKENS } from '../../utils/designTokens';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, CheckCircle, ExternalLink, FolderOpen, MapPin, RotateCw, Save, X, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, CheckCircle, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, MapPin, RotateCw, Save, X, XCircle } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
@@ -251,8 +251,14 @@ export default function AdminProjectsPage() {
 
   const closeDetailDrawer = () => setDetailProject(null);
 
-  const handleCoordinateSave = async () => {
+  const detailIndex = detailProject ? projects.findIndex(project => project.id === detailProject.id) : -1;
+  const previousProject = detailIndex > 0 ? projects[detailIndex - 1] : null;
+  const nextProject = detailIndex >= 0 && detailIndex < projects.length - 1 ? projects[detailIndex + 1] : null;
+  const coordinateQueueActive = filters.coordinate_status === 'missing';
+
+  const handleCoordinateSave = async ({ advance = false } = {}) => {
     if (!detailProject) return;
+    const nextTarget = advance ? nextProject : null;
     const latitude = coordinateForm.latitude === '' ? null : Number(coordinateForm.latitude);
     const longitude = coordinateForm.longitude === '' ? null : Number(coordinateForm.longitude);
 
@@ -272,9 +278,14 @@ export default function AdminProjectsPage() {
     setCoordinateBusy(true);
     try {
       const updated = await adminAPI.updateProjectCoordinates(detailProject.id, { latitude, longitude });
-      setDetailProject(p => ({ ...p, ...updated }));
       setProjects(list => list.map(project => project.id === detailProject.id ? { ...project, latitude: updated.latitude, longitude: updated.longitude } : project));
       toast.success(latitude === null ? 'Coordinates cleared' : 'Coordinates saved');
+      if (nextTarget) {
+        openDetailDrawer(nextTarget);
+      } else {
+        setDetailProject(p => ({ ...p, ...updated }));
+        if (advance) toast('End of the current page queue.');
+      }
       fetchProjects();
     } catch (e) {
       toast.error(e.message || 'Failed to save coordinates');
@@ -638,6 +649,7 @@ export default function AdminProjectsPage() {
                 <div className="flex flex-wrap gap-2 mt-3">
                   <Badge label={detailProject.status?.replace(/_/g,' ')} color={STATUS_COLORS[detailProject.status]||'gray'} dot />
                   {detailProject.trl_level && <Badge label={`TRL ${detailProject.trl_level}`} color="blue" />}
+                  {coordinateQueueActive && <Badge label="Coordinate queue" color="yellow" />}
                 </div>
               </div>
               <button onClick={closeDetailDrawer} className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close project detail">
@@ -748,6 +760,17 @@ export default function AdminProjectsPage() {
                       <Save size={14} strokeWidth={1.75} />
                       {coordinateBusy ? 'Saving...' : 'Save Coordinates'}
                     </button>
+                    {coordinateQueueActive && (
+                      <button
+                        type="button"
+                        onClick={() => handleCoordinateSave({ advance: true })}
+                        disabled={coordinateBusy || !nextProject}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        {coordinateBusy ? 'Saving...' : 'Save & Next'}
+                        <ChevronRight size={14} strokeWidth={1.75} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </section>
@@ -828,6 +851,24 @@ export default function AdminProjectsPage() {
                 <span>{formatDate(detailProject.created_at)}</span>
               </div>
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => previousProject && openDetailDrawer(previousProject)}
+                  disabled={!previousProject}
+                  className="inline-flex items-center gap-2 text-sm border border-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-40"
+                >
+                  <ChevronLeft size={16} strokeWidth={1.75} />
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => nextProject && openDetailDrawer(nextProject)}
+                  disabled={!nextProject}
+                  className="inline-flex items-center gap-2 text-sm border border-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-40"
+                >
+                  Next
+                  <ChevronRight size={16} strokeWidth={1.75} />
+                </button>
                 {drawerNextStatus && (
                   <button
                     onClick={() => handleStatusChange(detailProject.id, drawerNextStatus.value)}
