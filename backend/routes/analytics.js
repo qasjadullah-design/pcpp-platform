@@ -48,6 +48,9 @@ async function overview(req, res) {
       mapDistricts,
       mapProjects,
       missingMapProjects,
+      mitigationSummary,
+      mitigationByBasis,
+      partialSupport,
     ] = await Promise.all([
       pool.query(`
         SELECT
@@ -205,10 +208,40 @@ async function overview(req, res) {
                  COALESCE(district, 'Unspecified') ASC,
                  title ASC
       `, params),
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE mitigation_tco2e IS NOT NULL AND mitigation_tco2e > 0) AS projects_with_mitigation,
+          COALESCE(SUM(mitigation_tco2e), 0) AS total_tco2e,
+          COALESCE(SUM(mitigation_tco2e) FILTER (WHERE mitigation_basis = 'annual'), 0) AS annual_tco2e,
+          COALESCE(SUM(mitigation_tco2e) FILTER (WHERE mitigation_basis = 'lifetime'), 0) AS lifetime_tco2e
+        FROM projects p
+        ${where}
+      `, params),
+      pool.query(`
+        SELECT COALESCE(mitigation_basis, 'unspecified') AS basis,
+               COUNT(*) AS count,
+               COALESCE(SUM(mitigation_tco2e), 0) AS tco2e
+        FROM projects p
+        ${where}
+          AND mitigation_tco2e IS NOT NULL
+          AND mitigation_tco2e > 0
+        GROUP BY COALESCE(mitigation_basis, 'unspecified')
+        ORDER BY tco2e DESC
+      `, params),
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE COALESCE(funding_gap, 0) > 0 AND COALESCE(total_cost, 0) > 0) AS count,
+          COALESCE(SUM(funding_gap) FILTER (WHERE COALESCE(funding_gap, 0) > 0 AND COALESCE(total_cost, 0) > 0), 0) AS funding_gap,
+          COALESCE(SUM(total_cost) FILTER (WHERE COALESCE(funding_gap, 0) > 0 AND COALESCE(total_cost, 0) > 0), 0) AS total_cost
+        FROM projects p
+        ${where}
+      `, params),
     ]);
 
     const row = summary.rows[0] || {};
     const funding = fundingBreakdown.rows[0] || {};
+    const mitigation = mitigationSummary.rows[0] || {};
+    const partial = partialSupport.rows[0] || {};
 
     res.json({
       scope,
@@ -255,6 +288,25 @@ async function overview(req, res) {
         total: toNumber(funding.total),
         secured: toNumber(funding.secured),
         gap: toNumber(funding.gap),
+      },
+      mitigation: {
+        ndc_target_tco2e: null,
+        ndc_reference: null,
+        data_status: 'NDC target pending stakeholder source',
+        projects_with_mitigation: toInt(mitigation.projects_with_mitigation),
+        total_tco2e: toNumber(mitigation.total_tco2e),
+        annual_tco2e: toNumber(mitigation.annual_tco2e),
+        lifetime_tco2e: toNumber(mitigation.lifetime_tco2e),
+        by_basis: mitigationByBasis.rows.map((r) => ({
+          basis: r.basis,
+          count: toInt(r.count),
+          tco2e: toNumber(r.tco2e),
+        })),
+      },
+      partial_support: {
+        count: toInt(partial.count),
+        funding_gap: toNumber(partial.funding_gap),
+        total_cost: toNumber(partial.total_cost),
       },
       projects: projects.rows.map((p) => ({
         ...p,

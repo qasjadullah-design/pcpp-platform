@@ -7,7 +7,7 @@ const upload = require('../middleware/upload');
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const {
-      sector, district, status = 'approved', search,
+      sector, province, district, status = 'approved', search,
       page = 1, limit = 12, sort = 'created_at', order = 'DESC'
     } = req.query;
 
@@ -40,6 +40,7 @@ router.get('/', optionalAuth, async (req, res) => {
     }
 
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
+    if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.abstract ILIKE $${idx} OR p.organization_name ILIKE $${idx})`);
@@ -59,6 +60,7 @@ router.get('/', optionalAuth, async (req, res) => {
                p.status, p.trl_level, p.currency, p.total_cost, p.funding_gap,
                p.expected_roi, p.payback_years, p.direct_beneficiaries, p.jobs_created,
                p.organization_name, p.tags, p.progress_percent, p.infographic_url,
+               p.latitude, p.longitude,
                p.created_at, p.risk_level, p.priority_level,
                u.first_name || ' ' || u.last_name AS owner_name
         FROM projects p
@@ -106,6 +108,7 @@ router.get('/saved', authenticate, async (req, res) => {
              p.status, p.trl_level, p.currency, p.total_cost, p.funding_gap,
              p.expected_roi, p.payback_years, p.direct_beneficiaries, p.jobs_created,
              p.organization_name, p.tags, p.progress_percent, p.infographic_url,
+             p.latitude, p.longitude,
              p.created_at, p.risk_level, p.priority_level,
              sp.created_at AS saved_at,
              u.first_name || ' ' || u.last_name AS owner_name
@@ -483,18 +486,42 @@ router.post('/:id/save', authenticate, async (req, res) => {
 // Get platform statistics (public)
 router.get('/stats/public', async (req, res) => {
   try {
-    const [projects, funding, beneficiaries, investors] = await Promise.all([
+    const [projects, funding, beneficiaries, investors, sectorCounts, provinceCounts] = await Promise.all([
       pool.query("SELECT COUNT(*) FROM projects WHERE status = 'approved'"),
       pool.query("SELECT COALESCE(SUM(total_cost),0) AS total FROM projects WHERE status = 'approved'"),
       pool.query("SELECT COALESCE(SUM(direct_beneficiaries),0) AS total FROM projects WHERE status = 'approved'"),
-      pool.query("SELECT COUNT(DISTINCT user_id) FROM interests")
+      pool.query("SELECT COUNT(DISTINCT user_id) FROM interests"),
+      pool.query(`
+        SELECT COALESCE(primary_sector, 'Unspecified') AS sector, COUNT(*) AS count
+        FROM projects
+        WHERE status = 'approved'
+        GROUP BY COALESCE(primary_sector, 'Unspecified')
+        ORDER BY count DESC, sector ASC
+        LIMIT 8
+      `),
+      pool.query(`
+        SELECT COALESCE(province, 'Unspecified') AS province, COUNT(*) AS count
+        FROM projects
+        WHERE status = 'approved'
+        GROUP BY COALESCE(province, 'Unspecified')
+        ORDER BY count DESC, province ASC
+        LIMIT 8
+      `)
     ]);
 
     res.json({
       total_projects: parseInt(projects.rows[0].count),
       total_funding: parseInt(funding.rows[0].total),
       total_beneficiaries: parseInt(beneficiaries.rows[0].total),
-      active_investors: parseInt(investors.rows[0].count)
+      active_investors: parseInt(investors.rows[0].count),
+      projects_by_sector: sectorCounts.rows.map((row) => ({
+        sector: row.sector,
+        count: parseInt(row.count)
+      })),
+      projects_by_province: provinceCounts.rows.map((row) => ({
+        province: row.province,
+        count: parseInt(row.count)
+      }))
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch stats' });

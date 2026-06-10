@@ -45,7 +45,7 @@ const migrate = async () => {
         
         -- Status & Priority
         status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft','under_review','approved','rejected','changes_requested','under_implementation','completed')),
-        risk_level VARCHAR(20) DEFAULT 'medium' CHECK (risk_level IN ('low','medium','high')),
+        risk_level VARCHAR(20) DEFAULT 'medium' CHECK (risk_level IN ('low','medium','high','critical')),
         priority_level VARCHAR(20) DEFAULT 'medium' CHECK (priority_level IN ('low','medium','high')),
         
         -- Timeline & Location

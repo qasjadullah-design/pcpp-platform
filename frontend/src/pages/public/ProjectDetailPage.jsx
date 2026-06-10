@@ -8,11 +8,14 @@ import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import Tooltip from '../../components/common/Tooltip';
-import { STATUS_COLORS, SDG_GOALS, TRL_LEVELS } from '../../utils/constants';
+import SdgBadge from '../../components/common/SdgBadge';
+import { WefNexusBadge, WefNexusMark } from '../../components/common/WefNexusMark';
+import LogoPlaceholder from '../../components/common/LogoPlaceholder';
+import { STATUS_COLORS, TRL_LEVELS, getProjectStatusLabel } from '../../utils/constants';
 import { TOKENS } from '../../utils/designTokens';
 import { trlText } from '../../utils/trl';
 import toast from 'react-hot-toast';
-import { Bookmark, Building2, ClipboardList, Droplet, Globe2, Landmark, Leaf, Mail, MapPin, Phone, Zap } from 'lucide-react';
+import { Bookmark, Building2, ClipboardList, Globe2, Landmark, Leaf, Mail, MapPin, Phone, Zap } from 'lucide-react';
 
 const TABS = ['Overview','Financial','Team','Documents','Updates','Gallery'];
 
@@ -119,7 +122,7 @@ export default function ProjectDetailPage() {
       {/* Header */}
       <div className="bg-emerald-700 text-white rounded-2xl p-8 mb-6">
         <div className="flex flex-wrap gap-3 mb-3">
-          <Badge label={project.status?.replace(/_/g,' ')} color={STATUS_COLORS[project.status]} />
+          <Badge label={getProjectStatusLabel(project.status)} color={STATUS_COLORS[project.status]} />
           {trl && <Tooltip content={trlText(project.trl_level)}><Badge label={`TRL ${project.trl_level}`} color="blue" /></Tooltip>}
         </div>
         <h1 className="text-2xl md:text-3xl font-bold mb-2">{project.title}</h1>
@@ -164,10 +167,7 @@ export default function ProjectDetailPage() {
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
                   <h2 className="font-semibold text-gray-900 mb-3">SDG Alignment</h2>
                   <div className="flex flex-wrap gap-2">
-                    {project.sdg_goals.map(n => {
-                      const sdg = SDG_GOALS.find(s => s.id === n);
-                      return sdg ? <div key={n} className="flex items-center gap-1 px-3 py-1 rounded-full text-white text-xs font-medium" style={{ backgroundColor: sdg.color }}>{sdg.id}. {sdg.name}</div> : null;
-                    })}
+                    {project.sdg_goals.map(n => <SdgBadge key={n} goal={n} compact />)}
                   </div>
                 </div>
               )}
@@ -209,16 +209,22 @@ export default function ProjectDetailPage() {
               )}
               {project.wef_nexus?.length > 0 && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Droplet size={18} strokeWidth={1.75} className="text-pcpp-water" /> Water-Energy-Food Nexus</h2>
+                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><WefNexusMark size={24} /> Water-Energy-Food Nexus</h2>
                   <div className="flex flex-wrap gap-2">
-                    {project.wef_nexus.map(nx => <span key={nx} className="px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 text-xs font-medium">{nx}</span>)}
+                    {project.wef_nexus.map(nx => <WefNexusBadge key={nx} value={nx} />)}
                   </div>
                 </div>
               )}
-              {(project.line_ministry || project.partners?.length > 0 || project.provincial_contacts?.length > 0) && (
+              {(project.line_ministry || project.partners?.length > 0 || project.provincial_contacts?.length > 0 || project.carbon_standard) && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Landmark size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Ownership & Partners</h2>
+                  <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Landmark size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Ownership, Partners & Standards</h2>
                   {project.line_ministry && <p className="text-sm mb-3"><span className="text-gray-500">Line Ministry: </span><span className="font-medium text-gray-900">{project.line_ministry}</span></p>}
+                  {project.carbon_standard && (
+                    <div className="mb-3">
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Standards</h3>
+                      <span className="inline-flex items-center rounded-control bg-pcpp-mist px-3 py-1.5 text-xs font-medium text-pcpp-pine">{project.carbon_standard}</span>
+                    </div>
+                  )}
                   {project.provincial_contacts?.length > 0 && (
                     <div className="mb-3">
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Provincial Contacts</h3>
@@ -232,9 +238,15 @@ export default function ProjectDetailPage() {
                   {project.partners?.length > 0 && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Partners</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid sm:grid-cols-2 gap-2">
                         {project.partners.map((pt, i) => (
-                          <span key={i} className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">{pt.name}{pt.type ? ` (${pt.type})` : ''}{pt.role ? ` — ${pt.role}` : ''}</span>
+                          <div key={i} className="flex items-center gap-3 rounded-card border border-gray-100 bg-gray-50 p-3">
+                            <LogoPlaceholder label={pt.name} src={pt.logo_url} tone={project.primary_sector} />
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{pt.name || 'Partner'}</div>
+                              <div className="text-xs text-gray-500">{[pt.type, pt.role].filter(Boolean).join(' / ') || 'Partner details pending'}</div>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>

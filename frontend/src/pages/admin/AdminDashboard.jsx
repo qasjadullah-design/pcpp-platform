@@ -6,9 +6,10 @@ import { FolderOpen, RefreshCw, Users, Wallet, AlertTriangle, BarChart3, Clipboa
 import { adminAPI } from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import Tooltip from '../../components/common/Tooltip';
+import LogoPlaceholder from '../../components/common/LogoPlaceholder';
 import { trlText } from '../../utils/trl';
-import { STATUS_COLORS_HEX } from '../../utils/designTokens';
-import { formatCurrency } from '../../utils/constants';
+import { CHART_COLORS, STATUS_COLORS_HEX, getChartOptions, getSectorColor } from '../../utils/designTokens';
+import { formatCurrency, getProjectStatusLabel } from '../../utils/constants';
 
 ChartJS.register(ArcElement, ChartTooltip, Legend);
 
@@ -27,6 +28,7 @@ function buildLifecycle(statusStats = []) {
 const num = (v) => (Number(v) || 0).toLocaleString();
 const billions = (v) => (v ? `Rs. ${(Number(v) / 1e9).toFixed(1)}B` : '—');
 const pendingReviewPath = '/admin/projects?status=under_review&sort_by=created_at&sort_dir=asc';
+const trlColor = (level) => CHART_COLORS.categorical[(Math.max(1, Number(level) || 1) - 1) % CHART_COLORS.categorical.length];
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
@@ -58,13 +60,14 @@ export default function AdminDashboard() {
       borderWidth: 0,
     }],
   };
-  const lifecycleOptions = {
+  const lifecycleOptions = getChartOptions({
     cutout: '65%',
+    scales: null,
     plugins: {
       legend: { display: false },
       tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} (${lifecyclePct(ctx.parsed)}%)` } },
     },
-  };
+  });
 
   return (
     <div className="p-8">
@@ -110,7 +113,7 @@ export default function AdminDashboard() {
             <div key={s.primary_sector} className="flex items-center justify-between py-1.5 text-sm">
               <span className="text-ink-secondary">{s.primary_sector}</span>
               <div className="flex items-center gap-2">
-                <div className="w-20 h-1.5 bg-pcpp-mist rounded-full"><div className="h-1.5 bg-pcpp-emerald rounded-full" style={{width:`${Math.min(100,(s.count/maxSector)*100)}%`}}/></div>
+                <div className="w-20 h-1.5 bg-pcpp-mist rounded-full"><div className="h-1.5 rounded-full" style={{width:`${Math.min(100,(s.count/maxSector)*100)}%`, backgroundColor: getSectorColor(s.primary_sector)}}/></div>
                 <span className="text-ink-tertiary w-8 text-right tabular-nums">{num(s.count)}</span>
               </div>
             </div>
@@ -122,7 +125,7 @@ export default function AdminDashboard() {
           <h3 className="font-semibold text-pcpp-pine mb-4 flex items-center gap-2"><ClipboardList size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> By status</h3>
           {data?.status_stats?.map(s => (
             <div key={s.status} className="flex items-center justify-between py-1.5 text-sm">
-              <span className="text-ink-secondary capitalize">{s.status?.replace(/_/g,' ')}</span>
+              <span className="text-ink-secondary">{getProjectStatusLabel(s.status)}</span>
               <span className="font-medium text-ink tabular-nums">{num(s.count)}</span>
             </div>
           ))}
@@ -134,9 +137,9 @@ export default function AdminDashboard() {
           {data?.trl_stats?.map(t => (
             <div key={t.trl_level} className="flex items-center gap-2 py-1 text-sm">
               <Tooltip content={trlText(t.trl_level)}>
-                <span className="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold cursor-help" style={{backgroundColor:`hsl(${t.trl_level*30},70%,50%)`}}>{t.trl_level}</span>
+                <span className="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold cursor-help" style={{backgroundColor: trlColor(t.trl_level)}}>{t.trl_level}</span>
               </Tooltip>
-              <div className="flex-1 h-2 bg-pcpp-mist rounded-full"><div className="h-2 rounded-full" style={{width:`${Math.min(100,(t.count/maxTrl)*100)}%`,backgroundColor:`hsl(${t.trl_level*30},70%,50%)`}}/></div>
+              <div className="flex-1 h-2 bg-pcpp-mist rounded-full"><div className="h-2 rounded-full" style={{width:`${Math.min(100,(t.count/maxTrl)*100)}%`,backgroundColor: trlColor(t.trl_level)}}/></div>
               <span className="text-ink-tertiary w-8 text-right tabular-nums">{num(t.count)}</span>
             </div>
           ))}
@@ -176,7 +179,10 @@ export default function AdminDashboard() {
         {data?.province_stats?.length ? (
           data.province_stats.map(p => (
             <div key={p.province} className="flex items-center justify-between py-1.5 text-sm">
-              <span className="text-ink-secondary w-44 truncate">{p.province}</span>
+              <span className="text-ink-secondary w-44 truncate flex items-center gap-2">
+                <LogoPlaceholder label={p.province} tone={p.province} className="h-7 w-7 text-[10px]" />
+                {p.province}
+              </span>
               <div className="flex items-center gap-2 flex-1">
                 <div className="flex-1 h-2 bg-pcpp-mist rounded-full"><div className="h-2 bg-pcpp-emerald rounded-full" style={{width:`${Math.min(100,(p.count/maxProvince)*100)}%`}}/></div>
                 <span className="text-ink font-medium w-10 text-right tabular-nums">{num(p.count)}</span>

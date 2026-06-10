@@ -10,15 +10,21 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { BarChart3, CircleDollarSign, Download, ExternalLink, FolderOpen, LocateFixed, Map as MapIcon, MapPin, RefreshCw, Wallet } from 'lucide-react';
+import { BarChart3, CircleDollarSign, Download, ExternalLink, FolderOpen, Leaf, LocateFixed, Map as MapIcon, MapPin, RefreshCw, Wallet } from 'lucide-react';
 import { analyticsAPI } from '../../services/api';
 import Spinner from '../../components/common/Spinner';
-import { formatCurrency } from '../../utils/constants';
-import { STATUS_COLORS_HEX, TOKENS, WEF_COLORS } from '../../utils/designTokens';
+import { formatCurrency, getProjectStatusLabel } from '../../utils/constants';
+import { CHART_COLORS, STATUS_COLORS_HEX, TOKENS, getChartOptions, getWefColor } from '../../utils/designTokens';
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
 const num = (value) => (Number(value) || 0).toLocaleString();
+const formatTco2e = (value) => {
+  const numValue = Number(value) || 0;
+  if (Math.abs(numValue) >= 1000000) return `${(numValue / 1000000).toLocaleString(undefined, { maximumFractionDigits: 1 })} MtCO2e`;
+  if (Math.abs(numValue) >= 1000) return `${(numValue / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} ktCO2e`;
+  return `${numValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} tCO2e`;
+};
 
 const lifecycleOrder = ['Pipeline', 'Ongoing', 'Completed'];
 const lifecycleColors = {
@@ -27,7 +33,7 @@ const lifecycleColors = {
   Completed: STATUS_COLORS_HEX.completed,
 };
 
-const wefColor = (sector) => WEF_COLORS[sector] || WEF_COLORS.Other;
+const wefColor = (sector) => getWefColor(sector);
 
 const emptyChart = (rows) => !rows || rows.length === 0 || rows.every((row) => Number(row.count || row.investment || 0) === 0);
 
@@ -73,7 +79,7 @@ const coordinatePercent = (value, min, max) => {
 
 const pointSize = (project) => clamp(8 + Math.log10(Number(project.total_cost || 0) + 1) * 1.8, 9, 22);
 
-const statusLabel = (status) => (status || 'unspecified').replace(/_/g, ' ');
+const statusLabel = (status) => getProjectStatusLabel(status);
 
 const districtKey = (row) => `${row.province || 'Unspecified'}::${row.district || 'Unspecified'}`;
 
@@ -82,6 +88,7 @@ const matchesProjectFilters = (project, activeFilter, tableFilters) => {
   if (activeFilter?.type === 'lifecycle' && lifecycleBucket(project) !== activeFilter.value) return false;
   if (activeFilter?.type === 'province' && (project.province || 'Unspecified') !== activeFilter.value) return false;
   if (activeFilter?.type === 'trl' && Number(project.trl_level) !== Number(activeFilter.value)) return false;
+  if (activeFilter?.type === 'partial_support' && !(Number(project.funding_gap || 0) > 0 && Number(project.total_cost || 0) > 0)) return false;
   if (tableFilters.sector && sectorBucket(project) !== tableFilters.sector) return false;
   if (tableFilters.lifecycle && lifecycleBucket(project) !== tableFilters.lifecycle) return false;
   if (tableFilters.trl && Number(project.trl_level) !== Number(tableFilters.trl)) return false;
@@ -91,30 +98,35 @@ const matchesProjectFilters = (project, activeFilter, tableFilters) => {
 };
 
 function chartBaseOptions(extra = {}) {
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
+  return getChartOptions({
+    ...extra,
     plugins: {
-      legend: { display: false },
+      ...extra.plugins,
       tooltip: {
+        ...extra.plugins?.tooltip,
         callbacks: {
+          ...extra.plugins?.tooltip?.callbacks,
           label: (ctx) => `${ctx.dataset.label || ctx.label}: ${num(parsedValue(ctx))}`,
         },
       },
     },
-    ...extra,
-  };
+  });
 }
 
-function KpiCard({ Icon, label, value, accent = false }) {
+function KpiCard({ Icon, label, value, accent = false, onClick }) {
+  const Wrapper = onClick ? 'button' : 'div';
   return (
-    <div className={`bg-pcpp-card rounded-card border p-5 ${accent ? 'border-pcpp-harvest/40' : 'border-pcpp-border'}`}>
+    <Wrapper
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={`bg-pcpp-card rounded-card border p-5 text-left ${accent ? 'border-pcpp-harvest/40' : 'border-pcpp-border'} ${onClick ? 'transition hover:border-pcpp-emerald hover:shadow-sm' : ''}`}
+    >
       <span className={`w-10 h-10 rounded-control flex items-center justify-center mb-3 ${accent ? 'bg-pcpp-harvest/10 text-pcpp-harvest' : 'bg-pcpp-emerald/10 text-pcpp-emerald'}`}>
         <Icon size={20} strokeWidth={1.75} />
       </span>
       <div className="text-2xl font-semibold text-pcpp-pine mb-1 tabular-nums">{value}</div>
       <div className="text-sm text-ink-secondary">{label}</div>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -417,7 +429,7 @@ export default function AnalyticsPage() {
       !isProvince && (project.province || 'Unspecified'),
       project.primary_sector || 'Unspecified',
       lifecycleBucket(project),
-      project.status?.replace(/_/g, ' ') || '',
+      getProjectStatusLabel(project.status),
       project.total_cost || 0,
       project.funding_gap || 0,
     ].filter((cell) => cell !== false)));
@@ -439,7 +451,7 @@ export default function AnalyticsPage() {
       project.district || 'Unspecified',
       project.city || '',
       project.primary_sector || 'Unspecified',
-      project.status?.replace(/_/g, ' ') || '',
+      getProjectStatusLabel(project.status),
       project.latitude ?? '',
       project.longitude ?? '',
       project.total_cost || 0,
@@ -469,6 +481,9 @@ export default function AnalyticsPage() {
 
   const summary = data.summary || {};
   const funding = data.funding_breakdown || {};
+  const mitigation = data.mitigation || {};
+  const partialSupport = data.partial_support || {};
+  const mitigationRows = mitigation.by_basis || [];
 
   const sectorChart = {
     labels: sectorRows.map((row) => row.sector),
@@ -493,7 +508,7 @@ export default function AnalyticsPage() {
     datasets: [{
       label: 'Projects',
       data: provinceRows.map((row) => row.count),
-      backgroundColor: TOKENS.emerald,
+      backgroundColor: provinceRows.map((_, index) => CHART_COLORS.categorical[index % CHART_COLORS.categorical.length]),
       borderRadius: 6,
     }],
   };
@@ -503,7 +518,7 @@ export default function AnalyticsPage() {
     datasets: [{
       label: 'Projects',
       data: trlRows.map((row) => row.count),
-      backgroundColor: TOKENS.water,
+      backgroundColor: trlRows.map((_, index) => CHART_COLORS.categorical[index % CHART_COLORS.categorical.length]),
       borderRadius: 6,
     }],
   };
@@ -514,6 +529,16 @@ export default function AnalyticsPage() {
       { label: 'Secured', data: [funding.secured || 0], backgroundColor: TOKENS.emerald, borderRadius: 6 },
       { label: 'Gap', data: [funding.gap || 0], backgroundColor: TOKENS.harvest, borderRadius: 6 },
     ],
+  };
+
+  const mitigationChart = {
+    labels: mitigationRows.map((row) => row.basis === 'annual' ? 'Annual' : row.basis === 'lifetime' ? 'Lifetime' : 'Unspecified'),
+    datasets: [{
+      label: 'tCO2e',
+      data: mitigationRows.map((row) => row.tco2e),
+      backgroundColor: mitigationRows.map((_, index) => CHART_COLORS.categorical[index % CHART_COLORS.categorical.length]),
+      borderRadius: 6,
+    }],
   };
 
   return (
@@ -540,6 +565,19 @@ export default function AnalyticsPage() {
         <KpiCard Icon={Wallet} label="Total investment" value={formatCurrency(summary.total_investment)} />
         <KpiCard Icon={CircleDollarSign} label="Funding gap" value={formatCurrency(summary.funding_gap)} accent />
         <KpiCard Icon={RefreshCw} label="Ongoing" value={num(summary.ongoing)} />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <KpiCard Icon={Leaf} label="Mapped CO2e mitigation" value={formatTco2e(mitigation.total_tco2e)} />
+        <KpiCard Icon={BarChart3} label="Mitigation projects" value={num(mitigation.projects_with_mitigation)} />
+        <KpiCard
+          Icon={CircleDollarSign}
+          label="Partially supported"
+          value={num(partialSupport.count)}
+          accent
+          onClick={() => setActiveFilter({ type: 'partial_support', value: 'partial', label: 'Partially supported' })}
+        />
+        <KpiCard Icon={Wallet} label="Partial-support gap" value={formatCurrency(partialSupport.funding_gap)} accent />
       </div>
 
       {activeFilter && (
@@ -571,6 +609,7 @@ export default function AnalyticsPage() {
           <Doughnut
             data={sectorChart}
             options={chartBaseOptions({
+              scales: null,
               onClick: (_, elements) => {
                 if (elements.length) {
                   const value = sectorRows[elements[0].index]?.sector;
@@ -585,6 +624,7 @@ export default function AnalyticsPage() {
           <Doughnut
             data={lifecycleChart}
             options={chartBaseOptions({
+              scales: null,
               onClick: (_, elements) => {
                 if (elements.length) {
                   const value = lifecycleRows[elements[0].index]?.lifecycle;
@@ -648,11 +688,49 @@ export default function AnalyticsPage() {
           />
         </ChartPanel>
 
+        <ChartPanel title="Mitigation potential" caption="Annual and lifetime CO2e values submitted by project owners." empty={!mitigationRows.length || mitigationRows.every((row) => Number(row.tco2e || 0) === 0)}>
+          <Bar
+            data={mitigationChart}
+            options={chartBaseOptions({
+              scales: { y: { beginAtZero: true } },
+              plugins: {
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => `${ctx.dataset.label}: ${formatTco2e(parsedValue(ctx))}`,
+                  },
+                },
+              },
+            })}
+          />
+        </ChartPanel>
+
+        <ChartPanel title="NDC mitigation summary" caption={mitigation.data_status || 'NDC target pending stakeholder source.'}>
+          <div className="h-full flex flex-col justify-center gap-4">
+            <div>
+              <div className="text-sm text-ink-secondary">Currently mapped project mitigation</div>
+              <div className="text-3xl font-semibold text-pcpp-pine tabular-nums">{formatTco2e(mitigation.total_tco2e)}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-control bg-pcpp-mist px-3 py-2">
+                <div className="text-xs text-ink-secondary">Annual</div>
+                <div className="font-semibold text-pcpp-pine tabular-nums">{formatTco2e(mitigation.annual_tco2e)}</div>
+              </div>
+              <div className="rounded-control bg-pcpp-mist px-3 py-2">
+                <div className="text-xs text-ink-secondary">Lifetime</div>
+                <div className="font-semibold text-pcpp-pine tabular-nums">{formatTco2e(mitigation.lifetime_tco2e)}</div>
+              </div>
+            </div>
+            <div className="rounded-control border border-pcpp-border bg-white px-3 py-2 text-xs text-ink-secondary">
+              National NDC target comparison will appear when a target value and source are configured.
+            </div>
+          </div>
+        </ChartPanel>
+
         <ChartPanel title="Top districts" caption="Indicative only: district data still needs normalization." empty={emptyChart(data.by_district)}>
           <Bar
             data={{
               labels: (data.by_district || []).map((row) => row.district),
-              datasets: [{ label: 'Projects', data: (data.by_district || []).map((row) => row.count), backgroundColor: TOKENS.emerald, borderRadius: 6 }],
+              datasets: [{ label: 'Projects', data: (data.by_district || []).map((row) => row.count), backgroundColor: (data.by_district || []).map((_, index) => CHART_COLORS.categorical[index % CHART_COLORS.categorical.length]), borderRadius: 6 }],
             }}
             options={chartBaseOptions({ indexAxis: 'y', scales: { x: { beginAtZero: true } } })}
           />
@@ -775,7 +853,7 @@ export default function AnalyticsPage() {
                   {!isProvince && <td className="px-4 py-3 text-ink-secondary">{project.province || 'Unspecified'}</td>}
                   <td className="px-4 py-3 text-ink-secondary">{project.primary_sector || 'Unspecified'}</td>
                   <td className="px-4 py-3 text-ink-secondary">{lifecycleBucket(project)}</td>
-                  <td className="px-4 py-3 text-ink-secondary capitalize">{project.status?.replace(/_/g, ' ')}</td>
+                  <td className="px-4 py-3 text-ink-secondary">{getProjectStatusLabel(project.status)}</td>
                   <td className="px-4 py-3 text-ink-secondary tabular-nums">{formatCurrency(project.total_cost)}</td>
                   <td className="px-4 py-3 text-ink-secondary tabular-nums">{formatCurrency(project.funding_gap)}</td>
                 </tr>

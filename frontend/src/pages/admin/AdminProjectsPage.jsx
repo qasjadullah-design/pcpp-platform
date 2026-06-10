@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
-import { STATUS_COLORS, SECTORS, PROVINCES, getDistricts, formatCurrency } from '../../utils/constants';
+import { STATUS_COLORS, SECTORS, PROVINCES, getDistricts, formatCurrency, getProjectStatusLabel } from '../../utils/constants';
 import { TOKENS } from '../../utils/designTokens';
 import Spinner from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
@@ -49,7 +49,7 @@ const QUICK_FILTERS = [
   { label: 'Pending Review', status: 'under_review', priority: '' },
   { label: 'Approved', status: 'approved', priority: '' },
   { label: 'Archived', status: 'archived', priority: '' },
-  { label: 'High Priority', status: '', priority: 'high_or_critical' },
+  { label: 'High Priority / Critical Risk', status: '', priority: 'high_or_critical' },
   { label: 'Missing Coordinates', status: '', priority: '', coordinate_status: 'missing' },
 ];
 
@@ -473,8 +473,8 @@ export default function AdminProjectsPage() {
             <option value="under_review">Under Review</option>
             <option value="approved">Approved</option>
             <option value="archived">Archived</option>
-            <option value="draft">Draft</option>
-            <option value="rejected">Rejected</option>
+            <option value="draft">{getProjectStatusLabel('draft')}</option>
+            <option value="rejected">{getProjectStatusLabel('rejected')}</option>
           </select>
           <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm" value={filters.sector} onChange={e=>setFilters(f=>({...f,sector:e.target.value,page:1}))}>
             <option value="">All Sectors</option>
@@ -563,7 +563,7 @@ export default function AdminProjectsPage() {
                         {hasValidCoordinates(p) ? 'Mapped' : 'Missing coordinates'}
                       </div>
                     </td>
-                    <td className={cellClass}><Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status]||'gray'} dot/></td>
+                    <td className={cellClass}><Badge label={getProjectStatusLabel(p.status)} color={STATUS_COLORS[p.status]||'gray'} dot/></td>
                     <td className={`${cellClass} text-gray-600 whitespace-nowrap`}>{formatCurrency(p.total_cost)}</td>
                     <td className={`${cellClass} text-gray-600 whitespace-nowrap`}>{formatDate(p.created_at)}</td>
                     <td className={cellClass} onClick={e => e.stopPropagation()}>
@@ -647,7 +647,7 @@ export default function AdminProjectsPage() {
                 </div>
                 <h2 className="text-lg font-bold text-gray-900 leading-snug">{detailProject.title}</h2>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <Badge label={detailProject.status?.replace(/_/g,' ')} color={STATUS_COLORS[detailProject.status]||'gray'} dot />
+                  <Badge label={getProjectStatusLabel(detailProject.status)} color={STATUS_COLORS[detailProject.status]||'gray'} dot />
                   {detailProject.trl_level && <Badge label={`TRL ${detailProject.trl_level}`} color="blue" />}
                   {coordinateQueueActive && <Badge label="Coordinate queue" color="yellow" />}
                 </div>

@@ -4,7 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import SdgBadge from '../../components/common/SdgBadge';
+import { WefNexusBadge, WefNexusMark } from '../../components/common/WefNexusMark';
 import { SECTORS, PROVINCES, getDistricts, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES, CO2_UNITS, MITIGATION_BASIS, toTco2e } from '../../utils/constants';
+import { getSectorColor } from '../../utils/designTokens';
 import toast from 'react-hot-toast';
 import {
   Banknote,
@@ -25,6 +28,7 @@ import {
   Landmark,
   Layers,
   Leaf,
+  MapPin,
   Palette,
   Pickaxe,
   RadioTower,
@@ -39,7 +43,15 @@ import {
   Zap,
 } from 'lucide-react';
 
-const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Impact & Team','Documents & Submit'];
+const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Climate & Impact','Team & Partners','Documents & Submit'];
+const PRIORITY_OPTIONS = ['low', 'medium', 'high'];
+const RISK_OPTIONS = ['low', 'medium', 'high', 'critical'];
+const FUNDING_TAGS = [
+  { value: '', label: 'Not tagged' },
+  { value: 'ADP', label: 'ADP' },
+  { value: 'PSDP', label: 'PSDP' },
+  { value: 'ADP/PSDP', label: 'ADP / PSDP' },
+];
 
 const SECTOR_ICONS = {
   'Energy & Power': Zap,
@@ -70,6 +82,18 @@ const SECTOR_ICONS = {
   Other: Layers,
 };
 
+function SectionHeading({ Icon = ClipboardList, title, level = 'h2' }) {
+  const Heading = level;
+  return (
+    <Heading className="font-semibold text-gray-900 flex items-center gap-2">
+      <span className="w-8 h-8 bg-pcpp-emerald text-white rounded-control flex items-center justify-center">
+        <Icon size={18} strokeWidth={1.9} />
+      </span>
+      {title}
+    </Heading>
+  );
+}
+
 export default function SubmitProjectPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -78,14 +102,15 @@ export default function SubmitProjectPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title:'', abstract:'', description:'',
-    primary_sector:'', sub_sectors:[], sdg_goals:[], wef_nexus:[],
+    primary_sector:'', custom_sector:'', sub_sectors:[], sdg_goals:[], wef_nexus:[],
     trl_level:'', status_level:'concept', risk_level:'medium', priority_level:'medium',
     duration_months:'', start_date:'', expected_completion:'', province:'', district:'', city:'', address:'',
-    currency:'PKR', total_cost:'', research_fund:'', equity_fund:'', debt_loan:'', grant_amount:'',
+    currency:'PKR', custom_currency:'', total_cost:'', research_fund:'', equity_fund:'', debt_loan:'', grant_amount:'',
+    funding_tag:'',
     funding_gap:'', min_investment:'', expected_roi:'', payback_years:'',
     direct_beneficiaries:'', indirect_beneficiaries:'', jobs_created:'',
     mitigation_value:'', mitigation_unit:'tCO2e', mitigation_basis:'annual',
-    carbon_market_relevant:false, carbon_standard:'', carbon_methodology:'', carbon_credit_status:'',
+    carbon_market_relevant:false, carbon_standard:'', custom_carbon_standard:'', carbon_methodology:'', carbon_credit_status:'',
     feasibility_status:'', feasibility_study_url:'', feasibility_notes:'', land_acquired:false,
     organization_name:'', organization_type:'', organization_website:'',
     project_lead:{ name:'', designation:'', email:'', phone:'' },
@@ -94,6 +119,9 @@ export default function SubmitProjectPage() {
   });
 
   const f = (k, v) => setForm(p => ({...p, [k]: v}));
+  const effectiveSector = form.primary_sector === 'Other' && form.custom_sector.trim() ? form.custom_sector.trim() : form.primary_sector;
+  const effectiveCurrency = form.currency === 'Other' && form.custom_currency.trim() ? form.custom_currency.trim().toUpperCase() : form.currency;
+  const effectiveCarbonStandard = form.carbon_standard === 'Other' && form.custom_carbon_standard.trim() ? form.custom_carbon_standard.trim() : form.carbon_standard;
 
   // Provincial users can only file under their own province; lock it in the form.
   // (The server also forces this on create, so this is UX only.)
@@ -121,6 +149,10 @@ export default function SubmitProjectPage() {
     setForm(p => ({ ...p, wef_nexus: p.wef_nexus.includes(val) ? p.wef_nexus.filter(x=>x!==val) : [...p.wef_nexus, val] }));
   };
 
+  const handleSectorSelect = (sector) => {
+    setForm(p => ({ ...p, primary_sector: sector, custom_sector: sector === 'Other' ? p.custom_sector : '' }));
+  };
+
   // Generic repeatable-row helpers (provincial_contacts, partners)
   const addRow = (key, blank) => setForm(p => ({ ...p, [key]: [...p[key], blank] }));
   const updateRow = (key, idx, field, val) => setForm(p => ({ ...p, [key]: p[key].map((r,i)=> i===idx ? { ...r, [field]: val } : r) }));
@@ -129,7 +161,27 @@ export default function SubmitProjectPage() {
   const handleSave = async (submit = false) => {
     setSaving(true);
     try {
-      const data = { ...form, tags: form.tags ? form.tags.split(',').map(t=>t.trim()) : [] };
+      if (form.primary_sector === 'Other' && !form.custom_sector.trim()) {
+        toast.error('Enter a custom sector name.');
+        return;
+      }
+      if (form.currency === 'Other' && !form.custom_currency.trim()) {
+        toast.error('Enter a custom currency code.');
+        return;
+      }
+      if (form.carbon_market_relevant && form.carbon_standard === 'Other' && !form.custom_carbon_standard.trim()) {
+        toast.error('Enter the custom carbon standard.');
+        return;
+      }
+      const tags = form.tags ? form.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
+      if (form.funding_tag) tags.push(`funding_type:${form.funding_tag}`);
+      const data = {
+        ...form,
+        primary_sector: effectiveSector,
+        currency: effectiveCurrency,
+        carbon_standard: effectiveCarbonStandard,
+        tags,
+      };
       await projectsAPI.create(data);
       toast.success('Project submitted for review!');
       navigate('/dashboard/projects');
@@ -142,6 +194,7 @@ export default function SubmitProjectPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Add New Project</h1>
         <p className="text-sm text-gray-500">Fill in all details to create a comprehensive project profile</p>
+        <p className="text-xs text-ink-tertiary mt-2">Fields marked with * are required.</p>
       </div>
 
       {/* Step Indicator */}
@@ -159,7 +212,7 @@ export default function SubmitProjectPage() {
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6">
         {step === 0 && (
           <div className="space-y-4">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">1</span> Basic Information</h2>
+            <SectionHeading Icon={ClipboardList} title="Basic Information" />
             <Input label="Project Title *" placeholder="Enter a clear, descriptive project title" value={form.title} onChange={e=>f('title',e.target.value)} required />
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Project Abstract *</label><textarea rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Describe the project objectives, scope, expected outcomes, and impact..." value={form.abstract} onChange={e=>f('abstract',e.target.value)}/></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Full Description</label><textarea rows={5} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Detailed project description..." value={form.description} onChange={e=>f('description',e.target.value)}/></div>
@@ -168,38 +221,60 @@ export default function SubmitProjectPage() {
 
         {step === 1 && (
           <div className="space-y-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">2</span> Sector</h2>
+            <SectionHeading Icon={Layers} title="Sector" />
             <div>
               <p className="text-sm text-gray-500 mb-3">Choose the primary sector and related sub-sectors</p>
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {SECTORS.map(s => {
                   const Icon = SECTOR_ICONS[s] || Layers;
+                  const selected = form.primary_sector === s;
+                  const color = getSectorColor(s);
                   return (
-                    <button key={s} onClick={()=>f('primary_sector',s)} className={`p-3 border rounded-xl text-center text-xs font-medium transition ${form.primary_sector===s?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={()=>handleSectorSelect(s)}
+                      className="p-3 border rounded-xl text-center text-xs font-semibold transition hover:-translate-y-0.5"
+                      style={{
+                        backgroundColor: selected ? color : `${color}10`,
+                        borderColor: selected ? color : `${color}35`,
+                        color: selected ? '#FFFFFF' : color,
+                      }}
+                    >
                       <Icon size={20} strokeWidth={1.75} className="mx-auto mb-1" />{s}
                     </button>
                   );
                 })}
               </div>
+              {form.primary_sector === 'Other' && (
+                <div className="mt-4 max-w-md">
+                  <Input label="Custom Sector *" placeholder="Enter the sector name" value={form.custom_sector} onChange={e=>f('custom_sector',e.target.value)} />
+                </div>
+              )}
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">3</span> SDG Alignment</h3>
+              <SectionHeading Icon={Globe2} title="SDG Alignment" level="h3" />
               <p className="text-sm text-gray-500 mb-3">Select all Sustainable Development Goals this project contributes to</p>
-              <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
                 {SDG_GOALS.map(sdg => (
-                  <button key={sdg.id} onClick={()=>handleSDG(sdg.id)} className={`p-3 rounded-xl text-white text-xs font-bold transition ${form.sdg_goals.includes(sdg.id)?'ring-4 ring-offset-1 ring-gray-300 opacity-100':'opacity-70 hover:opacity-90'}`} style={{backgroundColor: sdg.color}}>
-                    {sdg.id}
+                  <button
+                    key={sdg.id}
+                    type="button"
+                    onClick={()=>handleSDG(sdg.id)}
+                    className={`rounded-card text-left transition ${form.sdg_goals.includes(sdg.id)?'opacity-100':'opacity-75 hover:opacity-100'}`}
+                  >
+                    <SdgBadge goal={sdg} selected={form.sdg_goals.includes(sdg.id)} className="w-full" />
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">W</span> Water-Energy-Food Nexus</h3>
+              <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2"><WefNexusMark size={28} /> Water-Energy-Food Nexus</h3>
               <p className="text-sm text-gray-500 mb-3">Select all nexus dimensions this project addresses</p>
               <div className="flex gap-3 flex-wrap">
                 {WEF_NEXUS.map(nx => (
-                  <button key={nx} type="button" onClick={()=>toggleNexus(nx)} className={`px-5 py-2 border rounded-xl text-sm font-medium transition ${form.wef_nexus.includes(nx)?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
-                    {nx}
+                  <button key={nx} type="button" onClick={()=>toggleNexus(nx)} className="transition hover:-translate-y-0.5">
+                    <WefNexusBadge value={nx} selected={form.wef_nexus.includes(nx)} />
                   </button>
                 ))}
               </div>
@@ -209,7 +284,7 @@ export default function SubmitProjectPage() {
 
         {step === 2 && (
           <div className="space-y-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">4</span> Project Readiness & Status</h2>
+            <SectionHeading Icon={CheckCircle} title="Project Readiness & Status" />
             <div>
               <p className="text-sm text-gray-500 mb-3">Technology Readiness Level (TRL)</p>
               <div className="flex gap-3 flex-wrap">
@@ -223,10 +298,10 @@ export default function SubmitProjectPage() {
             </div>
             <div className="grid md:grid-cols-3 gap-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Project Status</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.status_level} onChange={e=>f('status_level',e.target.value)}><option value="concept">Concept</option><option value="planning">Planning</option><option value="development">Development</option></select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Risk Level</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.risk_level} onChange={e=>f('risk_level',e.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Priority Level</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.priority_level} onChange={e=>f('priority_level',e.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Risk Level</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.risk_level} onChange={e=>f('risk_level',e.target.value)}>{RISK_OPTIONS.map(option => <option key={option} value={option}>{option[0].toUpperCase() + option.slice(1)}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Priority Level</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.priority_level} onChange={e=>f('priority_level',e.target.value)}>{PRIORITY_OPTIONS.map(option => <option key={option} value={option}>{option[0].toUpperCase() + option.slice(1)}</option>)}</select></div>
             </div>
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">5</span> Timeline & Location</h2>
+            <SectionHeading Icon={MapPin} title="Timeline & Location" />
             <div className="grid md:grid-cols-4 gap-4">
               <Input label="Duration (Months)" type="number" value={form.duration_months} onChange={e=>f('duration_months',e.target.value)} />
               <Input label="Start Date" type="date" value={form.start_date} onChange={e=>f('start_date',e.target.value)} />
@@ -239,7 +314,7 @@ export default function SubmitProjectPage() {
               <Input label="Address" placeholder="Street address or location details" value={form.address} onChange={e=>f('address',e.target.value)} />
             </div>
 
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">6</span> Carbon-Market Readiness</h2>
+            <SectionHeading Icon={Leaf} title="Carbon-Market Readiness" />
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input type="checkbox" checked={form.carbon_market_relevant} onChange={e=>f('carbon_market_relevant',e.target.checked)} className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
               This project is relevant to carbon markets
@@ -249,10 +324,13 @@ export default function SubmitProjectPage() {
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Carbon Standard</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.carbon_standard} onChange={e=>f('carbon_standard',e.target.value)}><option value="">Select Standard</option>{CARBON_STANDARDS.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
                 <Input label="Methodology" placeholder="e.g. VM0007, ACM0002" value={form.carbon_methodology} onChange={e=>f('carbon_methodology',e.target.value)} />
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Credit Status</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.carbon_credit_status} onChange={e=>f('carbon_credit_status',e.target.value)}><option value="">Select Status</option>{CARBON_CREDIT_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+                {form.carbon_standard === 'Other' && (
+                  <Input label="Custom Carbon Standard *" placeholder="Enter the carbon standard" value={form.custom_carbon_standard} onChange={e=>f('custom_carbon_standard',e.target.value)} />
+                )}
               </div>
             )}
 
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">7</span> Feasibility</h2>
+            <SectionHeading Icon={FlaskConical} title="Feasibility" />
             <div className="grid md:grid-cols-3 gap-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Feasibility Study</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.feasibility_status} onChange={e=>f('feasibility_status',e.target.value)}><option value="">Select Status</option>{FEASIBILITY_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
               <Input label="Study Link (URL)" placeholder="https://..." value={form.feasibility_study_url} onChange={e=>f('feasibility_study_url',e.target.value)} />
@@ -267,16 +345,39 @@ export default function SubmitProjectPage() {
 
         {step === 3 && (
           <div className="space-y-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">6</span> Financial Information</h2>
+            <SectionHeading Icon={Banknote} title="Financial Information" />
             <div>
               <p className="text-sm text-gray-500 mb-3">Select Currency</p>
               <div className="flex gap-2 flex-wrap">
-                {CURRENCIES.map(c => <button key={c} onClick={()=>f('currency',c)} className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${form.currency===c?'bg-emerald-600 text-white border-emerald-600':'border-gray-200 text-gray-600 hover:border-gray-300'}`}>{c}</button>)}
+                {CURRENCIES.map((c, index) => {
+                  const selected = form.currency === c;
+                  const color = [getSectorColor('Water & Sanitation'), getSectorColor('Energy & Power'), getSectorColor('Agriculture & Food')][index % 3];
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={()=>f('currency',c)}
+                      className={`px-4 py-2 rounded-control text-sm font-semibold border transition ${selected ? 'opacity-100 shadow-sm' : 'opacity-60 hover:opacity-90'}`}
+                      style={{
+                        backgroundColor: selected ? color : `${color}10`,
+                        borderColor: selected ? color : `${color}35`,
+                        color: selected ? '#FFFFFF' : color,
+                      }}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
               </div>
+              {form.currency === 'Other' && (
+                <div className="mt-4 max-w-xs">
+                  <Input label="Custom Currency Code *" placeholder="e.g., CAD" maxLength={10} value={form.custom_currency} onChange={e=>f('custom_currency',e.target.value.toUpperCase())} />
+                </div>
+              )}
             </div>
             <div className="grid md:grid-cols-2 gap-4">
-              <Input label={`Total Project Cost (${form.currency}) *`} type="number" placeholder="e.g., 35000000000" value={form.total_cost} onChange={e=>f('total_cost',e.target.value)} />
-              <Input label={`Research Fund (${form.currency})`} type="number" placeholder="R&D" value={form.research_fund} onChange={e=>f('research_fund',e.target.value)} />
+              <Input label={`Total Project Cost (${effectiveCurrency}) *`} type="number" placeholder="e.g., 35000000000" value={form.total_cost} onChange={e=>f('total_cost',e.target.value)} />
+              <Input label={`Research Fund (${effectiveCurrency})`} type="number" placeholder="R&D" value={form.research_fund} onChange={e=>f('research_fund',e.target.value)} />
             </div>
             <div className="grid md:grid-cols-3 gap-4">
               <Input label="Equity Fund" type="number" value={form.equity_fund} onChange={e=>f('equity_fund',e.target.value)} />
@@ -289,28 +390,49 @@ export default function SubmitProjectPage() {
               <Input label="Expected ROI (%)" type="number" placeholder="e.g., 14.5" value={form.expected_roi} onChange={e=>f('expected_roi',e.target.value)} />
               <Input label="Payback (Years)" type="number" value={form.payback_years} onChange={e=>f('payback_years',e.target.value)} />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Government Funding Tag</label>
+              <div className="flex flex-wrap gap-2">
+                {FUNDING_TAGS.map(tag => (
+                  <button
+                    key={tag.value || 'none'}
+                    type="button"
+                    onClick={()=>f('funding_tag', tag.value)}
+                    className={`px-4 py-2 rounded-control border text-sm font-medium transition ${form.funding_tag === tag.value ? 'border-pcpp-emerald bg-pcpp-emerald text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                  >
+                    {tag.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-ink-tertiary mt-2">Saved as a project tag until a dedicated funding-source column is approved.</p>
+            </div>
           </div>
         )}
 
         {step === 4 && (
           <div className="space-y-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">8</span> Impact & Beneficiaries</h2>
+            <SectionHeading Icon={Globe2} title="Climate & Environmental Impact" />
             <div className="grid md:grid-cols-3 gap-4">
               <Input label="Direct Beneficiaries" type="number" placeholder="Number of people" value={form.direct_beneficiaries} onChange={e=>f('direct_beneficiaries',e.target.value)} />
               <Input label="Indirect Beneficiaries" type="number" placeholder="Number of people" value={form.indirect_beneficiaries} onChange={e=>f('indirect_beneficiaries',e.target.value)} />
               <Input label="Jobs Created" type="number" placeholder="Direct jobs" value={form.jobs_created} onChange={e=>f('jobs_created',e.target.value)} />
             </div>
 
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2 pt-2"><Globe2 size={18} strokeWidth={1.75} className="text-pcpp-emerald" /> Climate Mitigation (CO₂)</h3>
+            <SectionHeading Icon={Leaf} title="Climate Mitigation (CO2e)" level="h3" />
             <div className="grid md:grid-cols-3 gap-4">
               <Input label="Emission Reduction" type="number" placeholder="e.g., 5000" value={form.mitigation_value} onChange={e=>f('mitigation_value',e.target.value)} />
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Unit</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.mitigation_unit} onChange={e=>f('mitigation_unit',e.target.value)}>{CO2_UNITS.map(u=><option key={u.value} value={u.value}>{u.label}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Basis</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.mitigation_basis} onChange={e=>f('mitigation_basis',e.target.value)}>{MITIGATION_BASIS.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}</select></div>
             </div>
             {toTco2e(form.mitigation_value, form.mitigation_unit) != null && (
-              <p className="text-xs text-gray-500">≈ <span className="font-medium text-gray-700">{toTco2e(form.mitigation_value, form.mitigation_unit).toLocaleString()} tCO₂e</span> {form.mitigation_basis==='annual'?'per year':'over project lifetime'} (normalized)</p>
+              <p className="text-xs text-gray-500">~ <span className="font-medium text-gray-700">{toTco2e(form.mitigation_value, form.mitigation_unit).toLocaleString()} tCO2e</span> {form.mitigation_basis==='annual'?'per year':'over project lifetime'} (normalized)</p>
             )}
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">9</span> Project Team & Organization</h2>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="space-y-6">
+            <SectionHeading Icon={Users} title="Project Team & Organization" />
             <div className="grid md:grid-cols-3 gap-4">
               <Input label="Organization Name *" placeholder="Ministry / Company" value={form.organization_name} onChange={e=>f('organization_name',e.target.value)} />
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Organization Type</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.organization_type} onChange={e=>f('organization_type',e.target.value)}><option value="">Select</option><option>Government Ministry</option><option>Provincial Authority</option><option>Private Company</option><option>NGO</option><option>International Organization</option></select></div>
@@ -323,7 +445,7 @@ export default function SubmitProjectPage() {
               <Input label="Phone" value={form.project_lead.phone} onChange={e=>f('project_lead',{...form.project_lead,phone:e.target.value})} />
             </div>
 
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">10</span> Line Ministry, Contacts & Partners</h2>
+            <SectionHeading Icon={Landmark} title="Line Ministry, Contacts & Partners" />
             <div className="grid md:grid-cols-2 gap-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Line Ministry / Sponsoring Body</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.line_ministry} onChange={e=>f('line_ministry',e.target.value)}><option value="">Select</option>{LINE_MINISTRIES.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
             </div>
@@ -368,26 +490,26 @@ export default function SubmitProjectPage() {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <div className="space-y-6">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><span className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs font-bold">14</span> Tags & Keywords</h2>
+            <SectionHeading Icon={ClipboardList} title="Tags & Keywords" />
             <Input label="Tags (comma separated)" placeholder="e.g., Solar, Infrastructure, CPEC, Green Initiative" value={form.tags} onChange={e=>f('tags',e.target.value)} />
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
               <h3 className="font-medium text-emerald-800 mb-2 flex items-center gap-2"><ClipboardList size={18} strokeWidth={1.75} /> Project Summary</h3>
               <div className="grid md:grid-cols-2 gap-2 text-sm text-emerald-700">
                 <p>Title: {form.title || 'Not set'}</p>
-                <p>Sector: {form.primary_sector || 'Not set'}</p>
+                <p>Sector: {effectiveSector || 'Not set'}</p>
                 <p>Province: {form.province || 'Not set'}</p>
                 <p>District: {form.district || 'Not set'}</p>
-                <p>Total Cost: {form.total_cost ? `${form.currency} ${Number(form.total_cost).toLocaleString()}` : 'Not set'}</p>
+                <p>Total Cost: {form.total_cost ? `${effectiveCurrency} ${Number(form.total_cost).toLocaleString()}` : 'Not set'}</p>
                 <p>SDGs: {form.sdg_goals.length} selected</p>
                 <p>TRL Level: {form.trl_level || 'Not set'}</p>
-                <p>Carbon Market: {form.carbon_market_relevant ? (form.carbon_standard || 'Relevant') : 'Not relevant'}</p>
+                <p>Carbon Market: {form.carbon_market_relevant ? (effectiveCarbonStandard || 'Relevant') : 'Not relevant'}</p>
                 <p>Feasibility: {form.feasibility_status || 'Not set'}</p>
-                <p>CO₂ Mitigation: {toTco2e(form.mitigation_value, form.mitigation_unit) != null ? `${toTco2e(form.mitigation_value, form.mitigation_unit).toLocaleString()} tCO₂e ${form.mitigation_basis==='annual'?'/yr':'(lifetime)'}` : 'Not set'}</p>
+                <p>CO2e Mitigation: {toTco2e(form.mitigation_value, form.mitigation_unit) != null ? `${toTco2e(form.mitigation_value, form.mitigation_unit).toLocaleString()} tCO2e ${form.mitigation_basis==='annual'?'/yr':'(lifetime)'}` : 'Not set'}</p>
                 <p>WEF Nexus: {form.wef_nexus.length ? form.wef_nexus.join(', ') : 'None'}</p>
                 <p>Line Ministry: {form.line_ministry || 'Not set'}</p>
-                <p>Partners: {form.partners.length} • Contacts: {form.provincial_contacts.length}</p>
+                <p>Partners: {form.partners.length} / Contacts: {form.provincial_contacts.length}</p>
               </div>
             </div>
           </div>

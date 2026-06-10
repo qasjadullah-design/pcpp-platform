@@ -44,6 +44,21 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 4. Done Log - Recent Commits
 
+- `pending WEF Round 2 design, submission, public projects, and gated alignment`
+  - Implemented the WEF-themed design foundation with expanded tokens, sector/chart colors, WEF nexus mark, reusable SDG badges, and a logo-ready placeholder component.
+  - Updated Submit Project with clearer 7-step sections, icon section headers, proper required-field legend, Critical moved from Priority to Risk, Sector/Carbon Standard/Currency "Other" inputs, AUD/CFA currencies, ADP/PSDP funding tag, CO2e language, and separated Climate & Impact from Team & Partners.
+  - Added migration `backend/migrations/006_move_critical_priority_to_risk.sql`; updated initial schema and migrator awareness. Live DB still needs the migration applied before production can safely persist/use the moved critical-risk behavior.
+  - Updated admin filtering so `high_or_critical` means high priority or critical risk, while legacy `priority=critical` maps to critical risk for compatibility.
+  - Added a public projects location map, fixed province filtering to use a real `province` query param, returned project coordinates in public/saved project lists, added full-title card tooltips, and improved sector-tinted cards/icons.
+  - Relabeled project statuses in the UI only: `draft` displays as Concept, `rejected` as Not Approved, and `under_implementation` as Implementation Ongoing. No DB enum/value migration has been performed.
+  - Added analytics aggregates for mapped CO2e mitigation and partially supported projects, plus dashboard KPIs, mitigation chart, NDC-target-pending message, and partial-support drill-down filtering.
+  - Added logo-ready placeholders for partner/province presentation and expanded project detail "Ownership, Partners & Standards" with partner cards and carbon standard display.
+  - Follow-up: public stats now include approved-project counts by sector and province; the home page renders a live approved-projects-by-sector chart, province coverage panel, and live sector tile counts with mock fallback.
+  - Follow-up: completed a color consistency scan across the touched public/dashboard surfaces; findings were limited to expected token definitions, token-driven sector colors, and existing PCPP brand gradients.
+  - Verification passed after the latest round: `node --check backend/routes/analytics.js`, `node --check backend/routes/admin.js`, `node --check backend/routes/projects.js`, `git diff --check`, and `npm run build` from `frontend/`.
+  - Local smoke: root served on `http://localhost:3000`; a temporary CRA server on `http://localhost:3001` returned HTTP 200 for `/projects`, `/dashboard/submit`, and `/dashboard/analytics` when probed with browser-like `Accept: text/html` headers. The served bundle contained the new `Approved projects by sector` chart text. The temporary server was stopped after testing.
+  - Browser plugin note: the in-app Browser connector failed to initialize in this local session with a path/setup error, so verification used HTTP route and bundle probes rather than a screenshot.
+
 - `latest Add admin coordinate correction workflow`
   - Admin list/export now supports `coordinate_status=missing|valid`; All Projects includes a Missing Coordinates quick filter and coordinate status indicator in the Province column.
   - Added `PUT /api/admin/projects/:id/coordinates` with validation for Pakistan map bounds: latitude 23-38 and longitude 60-78.
@@ -210,15 +225,22 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 6. Current Focus / Next Actions
 
-The current UI thread is analytics geography and role-specific portfolio visibility.
+The current UI thread is WEF Round 2 polish and conservative gated improvements. Packages A/B/C are implemented, and several gated items are implemented under stakeholder-safe assumptions.
 
-Recommended next step: after deployment, verify the live analytics map for both admin and provincial users.
+Recommended next steps before deployment:
 
-1. Login as admin/superadmin and open `/dashboard/analytics`; confirm the map shows national project points and district coverage.
-2. Hover/focus several points and confirm tooltip title, province/district, status, lat/long, cost, and funding gap are correct.
-3. Use chart/table filters for sector, lifecycle, TRL, and province; confirm map points filter with the rest of the analytics page.
-4. Login as a provincial user and confirm the same page only shows that user's province.
-5. Use the missing-coordinate count as the next cleanup queue for projects without valid latitude/longitude.
+1. Apply and verify pending DB migrations in the target environment, especially `006_move_critical_priority_to_risk.sql` and the existing mitigation migration that provides `mitigation_tco2e` fields.
+2. Re-run `npm run build` from `frontend/` and backend syntax checks before pushing.
+3. Do a browser smoke test for `/dashboard/submit`, `/projects`, `/dashboard/analytics`, `/admin`, and a public project detail page once the local server can serve SPA deep links correctly.
+4. Verify admin filters: High Priority / Critical Risk should include high-priority projects and critical-risk projects.
+5. Verify public project filters: province should filter independently from district, and the map should show only valid coordinate points.
+6. Verify analytics: CO2e mitigation KPIs should use existing mitigation data; NDC target should remain explicitly marked as pending until a stakeholder-approved target/reference is provided.
+
+Remaining Round 2 items:
+
+1. Official SDG icons, partner logos, investor logos, and province/region marks once approved assets are provided.
+2. Partner/investor standards normalization if stakeholders want more than the current JSON/field-based presentation.
+3. Optional true DB status-value migration if stakeholders decide labels alone are insufficient.
 
 ## 7. Provincial Permission Model - Current Understanding
 

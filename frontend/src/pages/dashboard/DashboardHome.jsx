@@ -4,7 +4,7 @@ import { Bell, Send, FolderOpen, Inbox, Bookmark, Search, Plus, Building2 } from
 import { useAuth } from '../../context/AuthContext';
 import { projectsAPI, interestsAPI, notificationsAPI } from '../../services/api';
 import Badge from '../../components/common/Badge';
-import { STATUS_COLORS } from '../../utils/constants';
+import { STATUS_COLORS, getProjectStatusLabel } from '../../utils/constants';
 
 export default function DashboardHome() {
   const { user } = useAuth();
@@ -195,7 +195,7 @@ export default function DashboardHome() {
               <div className="flex items-center gap-3"><span className="w-8 h-8 bg-pcpp-emerald/10 text-pcpp-emerald rounded-control flex items-center justify-center"><FolderOpen size={16} strokeWidth={1.75} /></span>
                 <div><p className="text-sm font-medium text-ink">{p.title}</p><p className="text-xs text-ink-tertiary">{new Date(p.created_at).toLocaleDateString()}</p></div>
               </div>
-              <Badge label={p.status?.replace(/_/g,' ')} color={STATUS_COLORS[p.status] || 'gray'} />
+              <Badge label={getProjectStatusLabel(p.status)} color={STATUS_COLORS[p.status] || 'gray'} />
             </div>
           ))}
           {myProjects.length === 0 && <p className="text-sm text-ink-secondary text-center py-4">No projects yet. <Link to="/dashboard/submit" className="text-pcpp-emerald hover:underline">Submit one!</Link></p>}

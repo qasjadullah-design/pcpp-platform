@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { projectsAPI } from '../../services/api';
 import ProjectCard from '../../components/public/ProjectCard';
+import ProjectLocationMap from '../../components/public/ProjectLocationMap';
 import Spinner from '../../components/common/Spinner';
-import { SECTORS } from '../../utils/constants';
-import { MOCK_FEATURED_PROJECTS, PROVINCE_OPTIONS, STATUS_OPTIONS } from '../../data/designMocks';
+import { SECTORS, getProjectStatusLabel } from '../../utils/constants';
+import { MOCK_FEATURED_PROJECTS, PROVINCE_OPTIONS } from '../../data/designMocks';
 
 const sectorOptions = ['All Sectors', ...Array.from(new Set([...SECTORS, ...MOCK_FEATURED_PROJECTS.map((p) => p.sector || p.primary_sector)]))];
+const statusOptions = [
+  { label: 'All Status', value: '' },
+  { label: getProjectStatusLabel('under_review'), value: 'under_review' },
+  { label: getProjectStatusLabel('approved'), value: 'approved' },
+  { label: getProjectStatusLabel('under_implementation'), value: 'under_implementation' },
+  { label: getProjectStatusLabel('completed'), value: 'completed' },
+  { label: getProjectStatusLabel('archived'), value: 'archived' },
+];
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -13,13 +22,13 @@ export default function ProjectsPage() {
   const [error, setError] = useState(false);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [filters, setFilters] = useState({ search: '', sector: '', region: '', status: '', page: 1 });
+  const [filters, setFilters] = useState({ search: '', sector: '', province: '', status: '', page: 1 });
 
   useEffect(() => {
     const params = {
       search: filters.search || undefined,
       sector: filters.sector || undefined,
-      district: filters.region || undefined,
+      province: filters.province || undefined,
       status: filters.status || undefined,
       page: filters.page,
       limit: 9,
@@ -86,8 +95,8 @@ export default function ProjectsPage() {
             </select>
             <select
               className="px-4 py-3 border border-pcpp-border rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-pcpp-emerald bg-white"
-              value={filters.region}
-              onChange={(e) => handleFilter('region', e.target.value === 'All Provinces' ? '' : e.target.value)}
+              value={filters.province}
+              onChange={(e) => handleFilter('province', e.target.value === 'All Provinces' ? '' : e.target.value)}
             >
               {PROVINCE_OPTIONS.map((province) => (
                 <option key={province} value={province === 'All Provinces' ? '' : province}>
@@ -100,14 +109,11 @@ export default function ProjectsPage() {
               value={filters.status}
               onChange={(e) => handleFilter('status', e.target.value)}
             >
-              {STATUS_OPTIONS.map((status) => {
-                const value = status === 'All Status' ? '' : status.toLowerCase().replace(/\s/g, '_');
-                return (
-                  <option key={status} value={value}>
-                    {status}
-                  </option>
-                );
-              })}
+              {statusOptions.map((status) => (
+                <option key={status.label} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -119,14 +125,16 @@ export default function ProjectsPage() {
           <span className="text-xs text-pcpp-emerald font-semibold">Verified projects</span>
         </div>
 
+        {!loading && <ProjectLocationMap projects={displayProjects} total={resolvedTotal} />}
+
         {loading ? (
           <div className="py-16 flex justify-center">
             <Spinner />
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {displayProjects.map((project) => (
-              <ProjectCard key={project.id || project.title} project={project} />
+            {displayProjects.map((project, index) => (
+              <ProjectCard key={project.id || project.title} project={project} toneIndex={index} />
             ))}
           </div>
         )}

@@ -5,21 +5,34 @@
 /* PCPP design tokens — CSS variable mirror of tailwind.config.js.
    Use for non-Tailwind spots (inline styles, Chart.js, third-party). */
 :root {
-  --pcpp-pine: #0E3A2F;
+  --pcpp-pine: #0B3D33;
   --pcpp-pine-700: #14503F;
+  --pcpp-pine-800: #082F28;
   --pcpp-emerald: #1D9E75;
   --pcpp-emerald-600: #178363;
+  --pcpp-emerald-700: #0D6B57;
   --pcpp-mist: #F4F6F3;
 
-  --pcpp-water: #2E86C1;
+  --pcpp-water: #1F7A9B;
+  --pcpp-water-600: #17637E;
+  --pcpp-water-soft: #DFF4F8;
   --pcpp-energy: #1D9E75;
-  --pcpp-food: #E9A23B;
-  --pcpp-harvest: #E9A23B;
+  --pcpp-energy-600: #178363;
+  --pcpp-energy-soft: #DFF5EC;
+  --pcpp-food: #A56516;
+  --pcpp-food-600: #8A4F10;
+  --pcpp-food-soft: #FFF0D2;
+  --pcpp-harvest: #A56516;
+  --pcpp-climate: #3F7E44;
+  --pcpp-infrastructure: #6D5BD0;
+  --pcpp-industry: #9C4E97;
+  --pcpp-social: #B52E5E;
+  --pcpp-neutral: #6B8F84;
 
-  --status-ongoing: #1D9E75;
-  --status-pipeline: #E9A23B;
+  --status-ongoing: #178363;
+  --status-pipeline: #A56516;
   --status-completed: #6B8F84;
-  --status-review: #2E86C1;
+  --status-review: #1F7A9B;
   --status-rejected: #A32D2D;
 
   --text-primary: #1A2520;
@@ -27,7 +40,7 @@
   --text-tertiary: #8A968F;
 
   --pcpp-card: #FFFFFF;
-  --pcpp-border: rgba(14, 58, 47, 0.10);
+  --pcpp-border: rgba(11, 61, 51, 0.10);
 }
 
 @layer base {

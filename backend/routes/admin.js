@@ -107,7 +107,15 @@ router.get('/pending', async (req, res) => {
       WHERE p.status = 'under_review'
     `;
     const params = [];
-    if (priority) { query += ` AND p.priority_level = $1`; params.push(priority); }
+    if (priority === 'high_or_critical') {
+      query += ` AND (p.priority_level = 'high' OR p.risk_level = 'critical')`;
+    } else if (priority === 'critical') {
+      query += ` AND p.risk_level = $1`;
+      params.push(priority);
+    } else if (priority) {
+      query += ` AND p.priority_level = $1`;
+      params.push(priority);
+    }
     query += ` ORDER BY p.${sort === 'priority' ? 'priority_level' : 'created_at'} ASC`;
 
     const result = await pool.query(query, params);
@@ -302,7 +310,10 @@ router.get('/projects', async (req, res) => {
     if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
     if (priority === 'high_or_critical') {
-      conditions.push(`p.priority_level IN ('high', 'critical')`);
+      conditions.push(`(p.priority_level = 'high' OR p.risk_level = 'critical')`);
+    } else if (priority === 'critical') {
+      conditions.push(`p.risk_level = $${idx++}`);
+      params.push(priority);
     } else if (priority) {
       conditions.push(`p.priority_level = $${idx++}`);
       params.push(priority);
@@ -364,7 +375,10 @@ router.get('/projects/export', async (req, res) => {
     if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
     if (priority === 'high_or_critical') {
-      conditions.push(`p.priority_level IN ('high', 'critical')`);
+      conditions.push(`(p.priority_level = 'high' OR p.risk_level = 'critical')`);
+    } else if (priority === 'critical') {
+      conditions.push(`p.risk_level = $${idx++}`);
+      params.push(priority);
     } else if (priority) {
       conditions.push(`p.priority_level = $${idx++}`);
       params.push(priority);

@@ -12,7 +12,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { getSectorColor, getStatusAccent } from '../../utils/designTokens';
-import { formatCurrency } from '../../utils/constants';
+import { formatCurrency, getProjectStatusLabel } from '../../utils/constants';
 import Tooltip from '../common/Tooltip';
 import { trlText } from '../../utils/trl';
 
@@ -27,26 +27,36 @@ const sectorIconMap = {
   industry: Building2,
 };
 
-export default function ProjectCard({ project }) {
+const getSectorIcon = (sector = '') => {
+  const normalized = sector.toLowerCase();
+  const match = Object.entries(sectorIconMap).find(([key]) => normalized.includes(key));
+  return match?.[1] || Building2;
+};
+
+export default function ProjectCard({ project, toneIndex = 0 }) {
   const sector = project.primary_sector || project.sector || project.primary_sector?.[0] || 'Project';
   const title = project.title;
-  const organization = project.organization_name || project.organization || '—';
+  const organization = project.organization_name || project.organization || 'N/A';
   const location = project.district || project.province || project.city || 'Pakistan';
   const trl = project.trl_level || project.trl;
   const cost = project.total_cost ?? project.cost;
   const fundingGap = project.funding_gap ?? project.fundingGap;
   const roi = project.expected_roi ?? project.roi;
   const statusRaw = project.status || project.status_label || 'draft';
-  const statusLabel = statusRaw.replace(/_/g, ' ');
+  const statusLabel = getProjectStatusLabel(statusRaw);
   const accentColor = getSectorColor(sector);
   const statusColor = getStatusAccent(statusRaw);
   const detailLink = project.id ? `/projects/${project.id}` : '/projects';
-  const SectorIcon = sectorIconMap[sector?.toLowerCase?.()] || Building2;
+  const SectorIcon = getSectorIcon(sector);
+  const subtleTone = toneIndex % 2 === 1;
 
   return (
     <div
-      className="bg-pcpp-card rounded-card border border-pcpp-border p-5 shadow-sm hover:shadow-xl transition-shadow flex flex-col gap-4"
-      style={{ borderLeft: `4px solid ${accentColor}` }}
+      className="rounded-card border border-pcpp-border p-5 shadow-sm hover:shadow-xl transition-shadow flex flex-col gap-4"
+      style={{
+        backgroundColor: subtleTone ? `${accentColor}08` : '#FFFFFF',
+        borderLeft: `4px solid ${accentColor}`,
+      }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 flex-1">
@@ -57,7 +67,7 @@ export default function ProjectCard({ project }) {
             <SectorIcon size={24} strokeWidth={1.75} />
           </div>
           <div className="min-w-0">
-            <h3 className="font-semibold text-pcpp-pine leading-tight line-clamp-2">{title}</h3>
+            <h3 className="font-semibold text-pcpp-pine leading-tight line-clamp-2" title={title}>{title}</h3>
             <p className="text-sm text-ink-secondary">{organization}</p>
           </div>
         </div>

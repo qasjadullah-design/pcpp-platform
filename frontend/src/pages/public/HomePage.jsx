@@ -1,7 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip as ChartTooltip,
+  Legend,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+import {
   ArrowRight,
+  BarChart3,
   Briefcase,
   Building2,
   CheckCircle,
@@ -17,7 +27,9 @@ import { projectsAPI } from '../../services/api';
 import ProjectCard from '../../components/public/ProjectCard';
 import Spinner from '../../components/common/Spinner';
 import { MOCK_FEATURED_PROJECTS, MOCK_SECTORS, MOCK_STATS } from '../../data/designMocks';
-import { BRAND_COLORS, getSectorColor } from '../../utils/designTokens';
+import { BRAND_COLORS, CHART_COLORS, TOKENS, getChartOptions, getSectorColor } from '../../utils/designTokens';
+
+ChartJS.register(BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
 const statBlueprint = [
   { key: 'totalProjects', label: 'Total projects', icon: FolderOpen, formatter: (v) => formatCount(v) },
@@ -43,6 +55,17 @@ const formatPkr = (value) => {
   return `PKR ${num.toLocaleString()}`;
 };
 
+const normalizeCountRows = (rows, labelKey) => (
+  Array.isArray(rows)
+    ? rows
+        .map((row) => ({
+          name: row[labelKey] || row.name || 'Unspecified',
+          count: Number(row.count) || 0,
+        }))
+        .filter((row) => row.count > 0)
+    : []
+);
+
 export default function HomePage() {
   const [stats, setStats] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -62,6 +85,50 @@ export default function HomePage() {
   }, []);
 
   const resolvedProjects = projects.length ? projects.slice(0, 6) : MOCK_FEATURED_PROJECTS;
+  const sectorRows = useMemo(() => {
+    const liveRows = normalizeCountRows(stats?.projects_by_sector, 'sector');
+    return liveRows.length ? liveRows : MOCK_SECTORS.map((sector) => ({ name: sector.name, count: sector.count }));
+  }, [stats]);
+  const provinceRows = useMemo(() => normalizeCountRows(stats?.projects_by_province, 'province'), [stats]);
+  const chartRows = sectorRows.slice(0, 8);
+  const maxSectorCount = Math.max(1, ...chartRows.map((row) => row.count));
+  const projectCountChart = {
+    labels: chartRows.map((row) => row.name),
+    datasets: [
+      {
+        label: 'Approved projects',
+        data: chartRows.map((row) => row.count),
+        backgroundColor: chartRows.map((row) => getSectorColor(row.name)),
+        borderRadius: 6,
+        borderSkipped: false,
+        barThickness: 18,
+      },
+    ],
+  };
+  const projectCountOptions = getChartOptions({
+    indexAxis: 'y',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${Number(ctx.parsed?.x || 0).toLocaleString()} approved projects`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        suggestedMax: maxSectorCount,
+        ticks: {
+          precision: 0,
+          callback: (value) => Number(value).toLocaleString(),
+        },
+      },
+      y: {
+        grid: { display: false },
+      },
+    },
+  });
 
   return (
     <div className="min-h-screen bg-pcpp-mist">
@@ -137,6 +204,68 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Project Count Chart */}
+      <section className="pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)] gap-6 items-stretch">
+            <div className="bg-pcpp-card border border-pcpp-border rounded-card p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <div>
+                  <div className="inline-flex items-center gap-2 text-pcpp-emerald text-sm font-medium mb-2">
+                    <BarChart3 size={16} strokeWidth={1.75} />
+                    Project Count
+                  </div>
+                  <h2 className="text-2xl font-semibold text-pcpp-pine">Approved projects by sector</h2>
+                  <p className="text-sm text-ink-secondary mt-1">A live snapshot of where the public portfolio is concentrated.</p>
+                </div>
+                <Link to="/projects" className="inline-flex items-center gap-2 text-sm font-semibold text-pcpp-emerald">
+                  Browse portfolio
+                  <ArrowRight size={16} strokeWidth={1.75} />
+                </Link>
+              </div>
+              <div className="h-72">
+                <Bar data={projectCountChart} options={projectCountOptions} />
+              </div>
+            </div>
+
+            <div className="bg-pcpp-card border border-pcpp-border rounded-card p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-lg font-semibold text-pcpp-pine">Province coverage</h3>
+                  <p className="text-sm text-ink-secondary">Approved project distribution.</p>
+                </div>
+                <div className="h-10 w-10 rounded-control flex items-center justify-center" style={{ backgroundColor: `${TOKENS.water}18`, color: TOKENS.water }}>
+                  <Globe2 size={18} strokeWidth={1.75} />
+                </div>
+              </div>
+              {provinceRows.length ? (
+                <div className="space-y-3">
+                  {provinceRows.slice(0, 6).map((province, index) => {
+                    const width = Math.max(8, (province.count / Math.max(1, provinceRows[0].count)) * 100);
+                    const color = CHART_COLORS.categorical[index % CHART_COLORS.categorical.length];
+                    return (
+                      <div key={province.name}>
+                        <div className="flex items-center justify-between gap-3 text-sm mb-1.5">
+                          <span className="text-ink-secondary truncate">{province.name}</span>
+                          <span className="font-semibold text-pcpp-pine tabular-nums">{province.count.toLocaleString()}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-pcpp-mist overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${width}%`, backgroundColor: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-48 rounded-card bg-pcpp-mist border border-dashed border-pcpp-border flex items-center justify-center text-sm text-ink-secondary text-center px-6">
+                  Province counts will appear once approved project data is available.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Featured */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -180,7 +309,7 @@ export default function HomePage() {
             <p className="text-ink-secondary mt-2">Explore projects across key development sectors in Pakistan.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {MOCK_SECTORS.map((sector) => (
+            {sectorRows.map((sector) => (
               <Link
                 key={sector.name}
                 to={`/projects?sector=${encodeURIComponent(sector.name)}`}

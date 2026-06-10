@@ -101,7 +101,7 @@ export const TRL_LEVELS = [
   { level: 9, name: 'Operational', desc: 'Actual system proven in a full operational environment.' },
 ];
 
-export const CURRENCIES = ['PKR','USD','EUR','GBP','CNY','AED','SAR','JPY'];
+export const CURRENCIES = ['PKR','USD','EUR','GBP','CNY','AED','SAR','JPY','AUD','CFA','Other'];
 
 // A3 — Carbon-market readiness
 export const CARBON_STANDARDS = ['Verra (VCS)','Gold Standard','CDM','Article 6.2','Article 6.4','Plan Vivo','Other','None'];
@@ -161,16 +161,32 @@ export const STATUS_COLORS = {
 
 export const UPDATE_TYPES = ['milestone','progress','funding','construction','team','issue','announcement','general'];
 
+export const PROJECT_STATUS_LABELS = {
+  draft: 'Concept',
+  under_review: 'Under Review',
+  approved: 'Approved',
+  rejected: 'Not Approved',
+  changes_requested: 'Changes Requested',
+  under_implementation: 'Implementation Ongoing',
+  completed: 'Completed',
+  archived: 'Archived',
+};
+
+export const getProjectStatusLabel = (status = '') => {
+  const key = String(status || '').toLowerCase();
+  return PROJECT_STATUS_LABELS[key] || key.replace(/_/g, ' ') || 'Unspecified';
+};
+
 // Status label + badge color classes, keyed by the DB status value.
 export const PROJECT_STATUSES = {
-  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-700' },
-  under_review: { label: 'Under Review', color: 'bg-yellow-100 text-yellow-700' },
-  approved: { label: 'Approved', color: 'bg-green-100 text-green-700' },
-  rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700' },
-  changes_requested: { label: 'Changes Requested', color: 'bg-orange-100 text-orange-700' },
-  under_implementation: { label: 'Under Implementation', color: 'bg-blue-100 text-blue-700' },
-  completed: { label: 'Completed', color: 'bg-purple-100 text-purple-700' },
-  archived: { label: 'Archived', color: 'bg-gray-100 text-gray-500' },
+  draft: { label: PROJECT_STATUS_LABELS.draft, color: 'bg-gray-100 text-gray-700' },
+  under_review: { label: PROJECT_STATUS_LABELS.under_review, color: 'bg-yellow-100 text-yellow-700' },
+  approved: { label: PROJECT_STATUS_LABELS.approved, color: 'bg-green-100 text-green-700' },
+  rejected: { label: PROJECT_STATUS_LABELS.rejected, color: 'bg-red-100 text-red-700' },
+  changes_requested: { label: PROJECT_STATUS_LABELS.changes_requested, color: 'bg-orange-100 text-orange-700' },
+  under_implementation: { label: PROJECT_STATUS_LABELS.under_implementation, color: 'bg-blue-100 text-blue-700' },
+  completed: { label: PROJECT_STATUS_LABELS.completed, color: 'bg-purple-100 text-purple-700' },
+  archived: { label: PROJECT_STATUS_LABELS.archived, color: 'bg-gray-100 text-gray-500' },
 };
 
 export const formatCurrency = (value, currency = 'PKR') => {
