@@ -54,6 +54,9 @@ app.use('/api/interests', require('./routes/interests'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/meta', require('./routes/meta'));
+app.use('/api/documents', require('./routes/documents'));
+app.use('/api/search', require('./routes/search'));
 
 // Health check
 app.get('/api/health', (req, res) => {

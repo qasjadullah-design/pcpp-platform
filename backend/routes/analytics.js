@@ -2,6 +2,43 @@ const router = require('express').Router();
 const pool = require('../db/pool');
 const { authenticate } = require('../middleware/auth');
 
+router.get('/public', async (req, res) => {
+  try {
+    const portfolio = req.query.portfolio === 'all' ? 'all' : 'wef';
+    const scope = portfolio === 'wef' ? "AND p.priority_level = 'WEF'" : '';
+    const [headline, funding, sources, sectors, provinces, stages, carbon] = await Promise.all([
+      pool.query(`SELECT COUNT(*) AS total_projects, COUNT(*) FILTER (WHERE priority_level='WEF') AS wef_projects,
+        COALESCE(SUM(total_cost),0) AS total_finance_required, COALESCE(SUM(funding_gap),0) AS investment_gap,
+        COUNT(DISTINCT province) AS provinces_covered, COALESCE(SUM(estimated_co2_reduction),0) AS total_tco2e_yr
+        FROM projects p WHERE p.status NOT IN ('draft','rejected','archived') ${scope}`),
+      pool.query(`SELECT COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM project_funding_sources f WHERE f.project_id=p.id)
+        THEN (SELECT COALESCE(SUM(f.amount),0) FROM project_funding_sources f WHERE f.project_id=p.id AND f.status IN ('secured','committed'))
+        ELSE COALESCE(p.equity_fund,0)+COALESCE(p.debt_loan,0)+COALESCE(p.grant_amount,0) END),0) AS financing_secured
+        FROM projects p WHERE p.status NOT IN ('draft','rejected','archived') ${scope}`),
+      pool.query(`SELECT t.code, t.label, COALESCE(SUM(f.amount) FILTER (WHERE p.id IS NOT NULL AND f.status IN ('secured','committed')),0) AS secured,
+        COALESCE(SUM(f.amount) FILTER (WHERE p.id IS NOT NULL),0) AS pipeline, COUNT(DISTINCT p.id) AS projects
+        FROM funding_source_types t LEFT JOIN project_funding_sources f ON f.source_type=t.code
+        LEFT JOIN projects p ON p.id=f.project_id AND p.status NOT IN ('draft','rejected','archived') ${portfolio === 'wef' ? "AND p.priority_level='WEF'" : ''}
+        GROUP BY t.code,t.label,t.sort_order ORDER BY t.sort_order`),
+      pool.query(`SELECT COALESCE(primary_sector,'Unspecified') AS sector, COUNT(*) AS projects, COALESCE(SUM(total_cost),0) AS value,
+        COALESCE(SUM(funding_gap),0) AS gap FROM projects p WHERE p.status NOT IN ('draft','rejected','archived') ${scope} GROUP BY primary_sector ORDER BY value DESC`),
+      pool.query(`SELECT COALESCE(province,'Unspecified') AS province, COUNT(*) AS projects, COALESCE(SUM(total_cost),0) AS value
+        FROM projects p WHERE p.status NOT IN ('draft','rejected','archived') ${scope} GROUP BY province ORDER BY projects DESC`),
+      pool.query(`SELECT COALESCE(stage,'unspecified') AS stage, COUNT(*) AS projects FROM projects p
+        WHERE p.status NOT IN ('draft','rejected','archived') ${scope} GROUP BY stage ORDER BY projects DESC`),
+      pool.query(`SELECT COALESCE(carbon_credit_methodology,'not_decided') AS methodology, COUNT(*) AS projects,
+        COUNT(*) FILTER (WHERE carbon_finance_option) AS carbon_finance_projects,
+        COALESCE(SUM(climate_finance_amount),0) AS climate_finance FROM projects p
+        WHERE p.status NOT IN ('draft','rejected','archived') ${scope} GROUP BY carbon_credit_methodology ORDER BY projects DESC`),
+    ]);
+    const h = headline.rows[0] || {}; const f = funding.rows[0] || {};
+    res.json({ portfolio, headline: {
+      total_projects: toInt(h.total_projects), wef_projects: toInt(h.wef_projects), total_finance_required: toNumber(h.total_finance_required),
+      financing_secured: toNumber(f.financing_secured), investment_gap: toNumber(h.investment_gap), provinces_covered: toInt(h.provinces_covered), total_tco2e_yr: toNumber(h.total_tco2e_yr),
+    }, funding_sources: sources.rows, sectors: sectors.rows, provinces: provinces.rows, stages: stages.rows, carbon: carbon.rows });
+  } catch (error) { console.error('Public analytics failed:', error); res.status(500).json({ error: 'Failed to fetch public analytics' }); }
+});
+
 router.use(authenticate);
 
 const allowedRoles = new Set(['admin', 'superadmin', 'provincial']);

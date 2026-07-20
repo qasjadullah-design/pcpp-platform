@@ -272,6 +272,7 @@ export default function ProjectDetailPage() {
                   </div>
                 ))}
               </div>
+              <a href="https://ndcpartnership.org/knowledge-portal/climate-funds-explorer" target="_blank" rel="noopener noreferrer" className="mt-5 block rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 hover:border-emerald-400"><span className="font-semibold">Explore international climate funds</span><span className="block mt-1 text-emerald-700">Open the NDC Partnership Climate Funds Explorer for financing opportunities relevant to this project.</span></a>
             </div>
           )}
 
@@ -296,12 +297,25 @@ export default function ProjectDetailPage() {
           {tab === 'Documents' && (
             <div className="bg-white border border-gray-200 rounded-2xl p-6">
               <h2 className="font-semibold text-gray-900 mb-4">Documents</h2>
-              {project.documents && Object.entries(project.documents).filter(([,v]) => v).map(([k, v]) => (
-                <div key={k} className="flex items-center justify-between py-3 border-b border-gray-100">
-                  <span className="text-sm text-gray-700 capitalize">{k.replace(/_/g, ' ')}</span>
-                  <a href={v} target="_blank" rel="noreferrer" className="text-sm text-emerald-600 hover:underline">Download</a>
+              {Array.isArray(project.documents) && project.documents.filter(d => d.category !== 'photo').map(document => (
+                <div key={document.id} className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <span className="text-sm text-gray-700">{document.title || document.file_name}</span>
+                  <a href={document.file_url} target="_blank" rel="noreferrer" className="text-sm text-emerald-600 hover:underline">Download</a>
                 </div>
               ))}
+              {(!Array.isArray(project.documents) || !project.documents.some(d => d.category !== 'photo')) && <p className="text-sm text-gray-500">No documents available.</p>}
+            </div>
+          )}
+
+          {tab === 'Gallery' && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h2 className="font-semibold text-gray-900 mb-4">Project Gallery</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {(project.documents || []).filter(document => document.category === 'photo').map(document => (
+                  <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="aspect-square rounded-xl overflow-hidden bg-gray-100"><img src={document.file_url} alt={document.title || document.file_name} className="w-full h-full object-cover" /></a>
+                ))}
+              </div>
+              {!project.documents?.some(document => document.category === 'photo') && <p className="text-sm text-gray-500">No gallery photos available.</p>}
             </div>
           )}
 

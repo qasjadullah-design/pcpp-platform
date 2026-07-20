@@ -18,6 +18,9 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-8">
             <Link to="/" className="text-ink-secondary hover:text-pcpp-emerald text-sm font-medium">Home</Link>
             <Link to="/projects" className="text-ink-secondary hover:text-pcpp-emerald text-sm font-medium">Projects</Link>
+            <Link to="/invest" className="text-ink-secondary hover:text-pcpp-emerald text-sm font-medium">Invest</Link>
+            <Link to="/analytics" className="text-ink-secondary hover:text-pcpp-emerald text-sm font-medium">Analytics</Link>
+            <Link to="/search" className="text-ink-secondary hover:text-pcpp-emerald text-sm font-medium">Search</Link>
             <Link to="/about" className="text-ink-secondary hover:text-pcpp-emerald text-sm font-medium">About</Link>
           </div>
           <div className="flex items-center gap-3">

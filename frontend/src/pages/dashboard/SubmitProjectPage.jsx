@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { projectsAPI } from '../../services/api';
+import { metaAPI, projectsAPI } from '../../services/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import SdgBadge from '../../components/common/SdgBadge';
 import { WefNexusBadge, WefNexusMark } from '../../components/common/WefNexusMark';
-import { SECTORS, PROVINCES, getDistricts, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES, CO2_UNITS, MITIGATION_BASIS, toTco2e } from '../../utils/constants';
+import { SECTORS, PROVINCES, SDG_GOALS, TRL_LEVELS, CURRENCIES, CARBON_STANDARDS, CARBON_CREDIT_STATUS, FEASIBILITY_STATUS, WEF_NEXUS, LINE_MINISTRIES, PARTNER_TYPES, CO2_UNITS, MITIGATION_BASIS, toTco2e } from '../../utils/constants';
 import { getSectorColor } from '../../utils/designTokens';
 import toast from 'react-hot-toast';
 import {
@@ -44,7 +44,8 @@ import {
 } from 'lucide-react';
 
 const STEPS = ['Basic Info','Sector & SDG','Readiness & Location','Financial','Climate & Impact','Team & Partners','Documents & Submit'];
-const PRIORITY_OPTIONS = ['low', 'medium', 'high'];
+const PRIORITY_OPTIONS = ['WEF', 'low', 'medium', 'high'];
+const PROJECT_STAGES = ['concept', 'planning', 'development', 'under_implementation', 'scale_up', 'completed'];
 const RISK_OPTIONS = ['low', 'medium', 'high', 'critical'];
 const FUNDING_TAGS = [
   { value: '', label: 'Not tagged' },
@@ -96,14 +97,19 @@ function SectionHeading({ Icon = ClipboardList, title, level = 'h2' }) {
 
 export default function SubmitProjectPage() {
   const navigate = useNavigate();
+  const { id: editId } = useParams();
   const { user } = useAuth();
   const isProvincial = user?.role === 'provincial';
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [fundingSourceTypes, setFundingSourceTypes] = useState([]);
+  const [pendingDocuments, setPendingDocuments] = useState([]);
+  const [pendingPhotos, setPendingPhotos] = useState([]);
   const [form, setForm] = useState({
     title:'', abstract:'', description:'',
     primary_sector:'', custom_sector:'', sub_sectors:[], sdg_goals:[], wef_nexus:[],
-    trl_level:'', status_level:'concept', risk_level:'medium', priority_level:'medium',
+    trl_level:'', stage:'concept', risk_level:'medium', priority_level:'medium', secondary_sector:'', wef_pillars:[],
     duration_months:'', start_date:'', expected_completion:'', province:'', district:'', city:'', address:'',
     currency:'PKR', custom_currency:'', total_cost:'', research_fund:'', equity_fund:'', debt_loan:'', grant_amount:'',
     funding_tag:'',
@@ -115,7 +121,10 @@ export default function SubmitProjectPage() {
     organization_name:'', organization_type:'', organization_website:'',
     project_lead:{ name:'', designation:'', email:'', phone:'' },
     line_ministry:'', provincial_contacts:[], partners:[],
-    tags:'',
+    tags:'', districts:[], phases:[], funding_sources:[], feasibility_links:[],
+    carbon_credit_methodology:'not_decided', feasibility_type:'none_yet',
+    approval_loi_los:false, approval_departmental:false, approval_mocc_notification:false, approvals_confirmed:false,
+    climate_finance_available:false, climate_finance_amount:'', carbon_finance_option:false, carbon_finance_notes:'', estimated_co2_reduction:'',
   });
 
   const f = (k, v) => setForm(p => ({...p, [k]: v}));
@@ -128,6 +137,27 @@ export default function SubmitProjectPage() {
   useEffect(() => {
     if (isProvincial && user?.province) setForm(p => ({ ...p, province: user.province }));
   }, [isProvincial, user]);
+
+  useEffect(() => {
+    metaAPI.getFundingSourceTypes().then(r => setFundingSourceTypes(r.funding_source_types || [])).catch(() => setFundingSourceTypes([]));
+  }, []);
+
+  useEffect(() => {
+    if (!form.province) return setDistrictOptions([]);
+    metaAPI.getDistricts(form.province).then(r => setDistrictOptions(r.districts || [])).catch(() => setDistrictOptions([]));
+  }, [form.province]);
+
+  useEffect(() => {
+    if (!editId) return;
+    projectsAPI.getOne(editId).then(project => {
+      setForm(current => ({ ...current, ...project,
+        districts: (project.districts || []).map(d => d.id),
+        phases: project.phases || [], funding_sources: project.funding_sources || [],
+        feasibility_links: project.feasibility_links || [],
+        approvals_confirmed: Boolean(project.approvals_answered_at),
+      }));
+    }).catch(() => toast.error('Unable to load project for editing.'));
+  }, [editId]);
 
   if (user?.role === 'investor') {
     return (
@@ -157,6 +187,7 @@ export default function SubmitProjectPage() {
   const addRow = (key, blank) => setForm(p => ({ ...p, [key]: [...p[key], blank] }));
   const updateRow = (key, idx, field, val) => setForm(p => ({ ...p, [key]: p[key].map((r,i)=> i===idx ? { ...r, [field]: val } : r) }));
   const removeRow = (key, idx) => setForm(p => ({ ...p, [key]: p[key].filter((_,i)=> i!==idx) }));
+  const togglePillar = (pillar) => setForm(p => ({ ...p, wef_pillars: p.wef_pillars.includes(pillar) ? p.wef_pillars.filter(x => x !== pillar) : [...p.wef_pillars, pillar] }));
 
   const handleSave = async (submit = false) => {
     setSaving(true);
@@ -173,6 +204,10 @@ export default function SubmitProjectPage() {
         toast.error('Enter the custom carbon standard.');
         return;
       }
+      if (form.feasibility_type !== 'none_yet' && !form.approvals_confirmed) {
+        toast.error('Confirm that the feasibility approval checklist has been reviewed.');
+        return;
+      }
       const tags = form.tags ? form.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
       if (form.funding_tag) tags.push(`funding_type:${form.funding_tag}`);
       const data = {
@@ -181,9 +216,20 @@ export default function SubmitProjectPage() {
         currency: effectiveCurrency,
         carbon_standard: effectiveCarbonStandard,
         tags,
+        approvals_answered_at: form.feasibility_type !== 'none_yet' ? new Date().toISOString() : null,
       };
-      await projectsAPI.create(data);
-      toast.success('Project submitted for review!');
+      const project = editId ? await projectsAPI.update(editId, data) : await projectsAPI.create(data);
+      const uploadFiles = async (files, category) => {
+        if (!files.length) return;
+        const body = new FormData();
+        files.forEach(file => body.append('files', file));
+        body.append('category', category);
+        body.append('visibility', category === 'photo' ? 'public' : 'registered');
+        await projectsAPI.uploadFile(project.id, body);
+      };
+      await uploadFiles(pendingDocuments, 'project_document');
+      await uploadFiles(pendingPhotos, 'photo');
+      toast.success(editId ? 'Project updated successfully!' : 'Project submitted for review!');
       navigate('/dashboard/projects');
     } catch(e) { toast.error(e.message||'Failed'); }
     finally { setSaving(false); }
@@ -251,6 +297,7 @@ export default function SubmitProjectPage() {
                   <Input label="Custom Sector *" placeholder="Enter the sector name" value={form.custom_sector} onChange={e=>f('custom_sector',e.target.value)} />
                 </div>
               )}
+              <div className="mt-4 max-w-md"><label className="block text-sm font-medium text-gray-700 mb-1">Secondary Sector</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.secondary_sector} onChange={e=>f('secondary_sector',e.target.value)}><option value="">Optional secondary sector</option>{SECTORS.filter(s=>s!==form.primary_sector).map(s=><option key={s} value={s}>{s}</option>)}</select></div>
             </div>
             <div>
               <SectionHeading Icon={Globe2} title="SDG Alignment" level="h3" />
@@ -278,6 +325,7 @@ export default function SubmitProjectPage() {
                   </button>
                 ))}
               </div>
+              <label className="mt-4 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={form.priority_level === 'WEF'} onChange={e=>f('priority_level', e.target.checked ? 'WEF' : 'medium')} /> Flag as WEF Nexus priority portfolio</label>
             </div>
           </div>
         )}
@@ -297,7 +345,7 @@ export default function SubmitProjectPage() {
               </div>
             </div>
             <div className="grid md:grid-cols-3 gap-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Project Status</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.status_level} onChange={e=>f('status_level',e.target.value)}><option value="concept">Concept</option><option value="planning">Planning</option><option value="development">Development</option></select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Project Stage</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.stage} onChange={e=>f('stage',e.target.value)}>{PROJECT_STAGES.map(stage=><option key={stage} value={stage}>{stage.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Risk Level</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.risk_level} onChange={e=>f('risk_level',e.target.value)}>{RISK_OPTIONS.map(option => <option key={option} value={option}>{option[0].toUpperCase() + option.slice(1)}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Priority Level</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.priority_level} onChange={e=>f('priority_level',e.target.value)}>{PRIORITY_OPTIONS.map(option => <option key={option} value={option}>{option[0].toUpperCase() + option.slice(1)}</option>)}</select></div>
             </div>
@@ -309,7 +357,7 @@ export default function SubmitProjectPage() {
             </div>
             <div className="grid md:grid-cols-4 gap-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Province *</label><select disabled={isProvincial} title={isProvincial ? 'Locked to your province' : undefined} className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${isProvincial ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={form.province} onChange={e=>setForm(p=>({...p, province:e.target.value, district:''}))}><option value="">Select Province</option>{PROVINCES.map(p=><option key={p} value={p}>{p}</option>)}</select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">District</label><select disabled={!form.province} className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${!form.province ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={form.district} onChange={e=>f('district',e.target.value)}><option value="">{form.province ? 'Select District' : 'Select province first'}</option>{getDistricts(form.province).map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Districts</label><select multiple disabled={!form.province} className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${!form.province ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={form.districts.map(String)} onChange={e=>f('districts',Array.from(e.target.selectedOptions,o=>Number(o.value)))}>{districtOptions.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
               <Input label="City" placeholder="City name" value={form.city} onChange={e=>f('city',e.target.value)} />
               <Input label="Address" placeholder="Street address or location details" value={form.address} onChange={e=>f('address',e.target.value)} />
             </div>
@@ -333,6 +381,7 @@ export default function SubmitProjectPage() {
             <SectionHeading Icon={FlaskConical} title="Feasibility" />
             <div className="grid md:grid-cols-3 gap-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Feasibility Study</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.feasibility_status} onChange={e=>f('feasibility_status',e.target.value)}><option value="">Select Status</option>{FEASIBILITY_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Feasibility Type</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.feasibility_type} onChange={e=>f('feasibility_type',e.target.value)}><option value="none_yet">None yet</option><option value="pre_feasibility">Pre-feasibility</option><option value="detailed_feasibility">Detailed feasibility</option><option value="both">Both</option></select></div>
               <Input label="Study Link (URL)" placeholder="https://..." value={form.feasibility_study_url} onChange={e=>f('feasibility_study_url',e.target.value)} />
               <label className="flex items-center gap-2 text-sm text-gray-700 mt-7">
                 <input type="checkbox" checked={form.land_acquired} onChange={e=>f('land_acquired',e.target.checked)} className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
@@ -340,6 +389,8 @@ export default function SubmitProjectPage() {
               </label>
             </div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Feasibility Notes / Key Findings</label><textarea rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Summary of feasibility findings..." value={form.feasibility_notes} onChange={e=>f('feasibility_notes',e.target.value)}/></div>
+            <div><div className="flex justify-between mb-2"><h3 className="font-medium text-gray-800">Additional Feasibility Links</h3><button type="button" onClick={()=>addRow('feasibility_links',{title:'',url:''})} className="text-sm text-emerald-600 hover:underline">+ Add link</button></div>{form.feasibility_links.map((link,i)=><div key={i} className="grid md:grid-cols-3 gap-2 mb-2"><Input placeholder="Link title" value={link.title} onChange={e=>updateRow('feasibility_links',i,'title',e.target.value)} /><Input placeholder="https://..." value={link.url} onChange={e=>updateRow('feasibility_links',i,'url',e.target.value)} /><button type="button" onClick={()=>removeRow('feasibility_links',i)} className="text-red-500">Remove</button></div>)}</div>
+            {form.feasibility_type !== 'none_yet' && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 className="font-medium text-emerald-900 mb-3">Approval Checklist</h3><div className="grid md:grid-cols-3 gap-3 text-sm text-emerald-900"><label className="flex gap-2"><input type="checkbox" checked={form.approval_loi_los} onChange={e=>f('approval_loi_los',e.target.checked)} /> LOI / LOS available</label><label className="flex gap-2"><input type="checkbox" checked={form.approval_departmental} onChange={e=>f('approval_departmental',e.target.checked)} /> Departmental approval available</label><label className="flex gap-2"><input type="checkbox" checked={form.approval_mocc_notification} onChange={e=>f('approval_mocc_notification',e.target.checked)} /> MOCC notification cc available</label></div><label className="mt-4 flex gap-2 text-sm font-medium text-emerald-900"><input type="checkbox" checked={form.approvals_confirmed} onChange={e=>f('approvals_confirmed',e.target.checked)} /> I have reviewed and answered the approval checklist.</label></div>}
           </div>
         )}
 
@@ -375,6 +426,7 @@ export default function SubmitProjectPage() {
                 </div>
               )}
             </div>
+            <div><div className="flex justify-between mb-2"><h3 className="font-medium text-gray-800">Development Phases</h3><button type="button" onClick={()=>addRow('phases',{phase_name:'',start_date:'',end_date:'',duration_months:'',status:'planning',estimated_cost:''})} className="text-sm text-emerald-600 hover:underline">+ Add phase</button></div>{form.phases.map((phase,i)=><div key={i} className="grid md:grid-cols-6 gap-2 mb-2"><Input placeholder="Phase name" value={phase.phase_name} onChange={e=>updateRow('phases',i,'phase_name',e.target.value)} /><Input type="date" value={phase.start_date} onChange={e=>updateRow('phases',i,'start_date',e.target.value)} /><Input type="date" value={phase.end_date} onChange={e=>updateRow('phases',i,'end_date',e.target.value)} /><Input type="number" placeholder="Months" value={phase.duration_months} onChange={e=>updateRow('phases',i,'duration_months',e.target.value)} /><Input type="number" placeholder="Cost" value={phase.estimated_cost} onChange={e=>updateRow('phases',i,'estimated_cost',e.target.value)} /><button type="button" onClick={()=>removeRow('phases',i)} className="text-red-500">Remove</button></div>)}</div>
             <div className="grid md:grid-cols-2 gap-4">
               <Input label={`Total Project Cost (${effectiveCurrency}) *`} type="number" placeholder="e.g., 35000000000" value={form.total_cost} onChange={e=>f('total_cost',e.target.value)} />
               <Input label={`Research Fund (${effectiveCurrency})`} type="number" placeholder="R&D" value={form.research_fund} onChange={e=>f('research_fund',e.target.value)} />
@@ -406,6 +458,8 @@ export default function SubmitProjectPage() {
               </div>
               <p className="text-xs text-ink-tertiary mt-2">Saved as a project tag until a dedicated funding-source column is approved.</p>
             </div>
+            <div><div className="flex justify-between mb-2"><h3 className="font-medium text-gray-800">Funding Sources</h3><button type="button" onClick={()=>addRow('funding_sources',{source_type:'',provider_name:'',instrument:'',amount:'',currency:effectiveCurrency,status:'pipeline'})} className="text-sm text-emerald-600 hover:underline">+ Add source</button></div>{form.funding_sources.map((source,i)=><div key={i} className="grid md:grid-cols-6 gap-2 mb-2"><select className="border border-gray-300 rounded-lg px-2 text-sm" value={source.source_type} onChange={e=>updateRow('funding_sources',i,'source_type',e.target.value)}><option value="">Source type</option>{fundingSourceTypes.map(type=><option key={type.code} value={type.code}>{type.label}</option>)}</select><Input placeholder="Provider" value={source.provider_name} onChange={e=>updateRow('funding_sources',i,'provider_name',e.target.value)} /><Input placeholder="Instrument" value={source.instrument} onChange={e=>updateRow('funding_sources',i,'instrument',e.target.value)} /><Input type="number" placeholder="Amount" value={source.amount} onChange={e=>updateRow('funding_sources',i,'amount',e.target.value)} /><select className="border border-gray-300 rounded-lg px-2 text-sm" value={source.status} onChange={e=>updateRow('funding_sources',i,'status',e.target.value)}>{['secured','committed','pipeline','requested'].map(status=><option key={status} value={status}>{status}</option>)}</select><button type="button" onClick={()=>removeRow('funding_sources',i)} className="text-red-500">Remove</button></div>)}</div>
+            <div className="grid md:grid-cols-2 gap-4"><label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={form.climate_finance_available} onChange={e=>f('climate_finance_available',e.target.checked)} /> Climate finance available</label>{form.climate_finance_available && <Input label="Climate finance amount" type="number" value={form.climate_finance_amount} onChange={e=>f('climate_finance_amount',e.target.value)} />}<label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={form.carbon_finance_option} onChange={e=>f('carbon_finance_option',e.target.checked)} /> Carbon finance option</label>{form.carbon_finance_option && <Input label="Carbon-finance notes" value={form.carbon_finance_notes} onChange={e=>f('carbon_finance_notes',e.target.value)} />}</div>
           </div>
         )}
 
@@ -427,6 +481,7 @@ export default function SubmitProjectPage() {
             {toTco2e(form.mitigation_value, form.mitigation_unit) != null && (
               <p className="text-xs text-gray-500">~ <span className="font-medium text-gray-700">{toTco2e(form.mitigation_value, form.mitigation_unit).toLocaleString()} tCO2e</span> {form.mitigation_basis==='annual'?'per year':'over project lifetime'} (normalized)</p>
             )}
+            <div className="grid md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-gray-700 mb-1">Carbon credit methodology</label><select className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" value={form.carbon_credit_methodology} onChange={e=>f('carbon_credit_methodology',e.target.value)}><option value="not_decided">Not decided</option><option value="Verra">Verra</option><option value="Gold Standard">Gold Standard</option><option value="Article 6">Article 6</option></select></div><Input label="Estimated CO2e reduction (tCO2e/year)" type="number" value={form.estimated_co2_reduction} onChange={e=>f('estimated_co2_reduction',e.target.value)} /></div>
           </div>
         )}
 
@@ -492,6 +547,11 @@ export default function SubmitProjectPage() {
 
         {step === 6 && (
           <div className="space-y-6">
+            <SectionHeading Icon={ClipboardList} title="Documents & Gallery" />
+            <div className="grid md:grid-cols-2 gap-5">
+              <div className="rounded-xl border border-dashed border-gray-300 p-4"><label className="block text-sm font-medium text-gray-800 mb-2">Project documents</label><input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onChange={e=>setPendingDocuments(Array.from(e.target.files || []))} /><p className="text-xs text-gray-500 mt-2">{pendingDocuments.length ? `${pendingDocuments.length} file(s) selected` : 'PDF, Office documents; uploaded after project creation.'}</p></div>
+              <div className="rounded-xl border border-dashed border-gray-300 p-4"><label className="block text-sm font-medium text-gray-800 mb-2">Photo gallery</label><input type="file" multiple accept="image/jpeg,image/png" onChange={e=>setPendingPhotos(Array.from(e.target.files || []))} /><p className="text-xs text-gray-500 mt-2">{pendingPhotos.length ? `${pendingPhotos.length} photo(s) selected` : 'JPEG or PNG images; uploaded after project creation.'}</p></div>
+            </div>
             <SectionHeading Icon={ClipboardList} title="Tags & Keywords" />
             <Input label="Tags (comma separated)" placeholder="e.g., Solar, Infrastructure, CPEC, Green Initiative" value={form.tags} onChange={e=>f('tags',e.target.value)} />
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">

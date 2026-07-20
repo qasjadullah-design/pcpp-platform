@@ -1,13 +1,16 @@
 const router = require('express').Router();
+const crypto = require('crypto');
 const pool = require('../db/pool');
 const { authenticate, optionalAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { extractText } = require('../utils/extractText');
+const { buildStorageKey, deleteObject, putObject } = require('../services/storage');
 
 // GET all projects (public with filters)
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const {
-      sector, province, district, status = 'approved', search,
+      sector, province, district, priority, status = 'approved', search,
       page = 1, limit = 12, sort = 'created_at', order = 'DESC'
     } = req.query;
 
@@ -42,6 +45,7 @@ router.get('/', optionalAuth, async (req, res) => {
     if (sector) { conditions.push(`p.primary_sector = $${idx++}`); params.push(sector); }
     if (province) { conditions.push(`p.province = $${idx++}`); params.push(province); }
     if (district) { conditions.push(`p.district = $${idx++}`); params.push(district); }
+    if (priority) { conditions.push(`p.priority_level = $${idx++}`); params.push(priority); }
     if (search) {
       conditions.push(`(p.title ILIKE $${idx} OR p.abstract ILIKE $${idx} OR p.organization_name ILIKE $${idx})`);
       params.push(`%${search}%`);
@@ -148,7 +152,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
 
     // Fetch related data
-    const [sdgs, team, docs, videos, updates, shareholders, futurePlans, linkedProjects] = await Promise.all([
+    const [sdgs, team, docs, videos, updates, shareholders, futurePlans, linkedProjects, phases, fundingSources, feasibilityLinks, projectDistricts] = await Promise.all([
       pool.query('SELECT sdg_number FROM project_sdgs WHERE project_id = $1', [id]),
       pool.query('SELECT * FROM project_team WHERE project_id = $1 ORDER BY is_lead DESC', [id]),
       pool.query('SELECT * FROM project_documents WHERE project_id = $1', [id]),
@@ -161,8 +165,20 @@ router.get('/:id', optionalAuth, async (req, res) => {
         FROM project_links pl
         JOIN projects p2 ON pl.linked_project_id = p2.id
         WHERE pl.project_id = $1
-      `, [id])
+      `, [id]),
+      pool.query('SELECT * FROM project_phases WHERE project_id = $1 ORDER BY phase_order', [id]),
+      pool.query('SELECT * FROM project_funding_sources WHERE project_id = $1 ORDER BY created_at', [id]),
+      pool.query('SELECT * FROM project_feasibility_links WHERE project_id = $1 ORDER BY created_at', [id]),
+      pool.query(`SELECT d.id, d.province, d.name FROM project_districts pd
+                  JOIN districts d ON d.id = pd.district_id WHERE pd.project_id = $1 ORDER BY d.name`, [id])
     ]);
+
+    const canManageDocuments = ['admin', 'superadmin'].includes(req.user?.role) ||
+      project.user_id === req.user?.id ||
+      (req.user?.role === 'provincial' && project.province === req.user.province);
+    const visibleDocuments = docs.rows.filter((document) => canManageDocuments ||
+      (document.visibility === 'public' && project.status === 'approved') ||
+      (document.visibility === 'registered' && req.user));
 
     // Check if user has saved this project
     let isSaved = false;
@@ -181,12 +197,16 @@ router.get('/:id', optionalAuth, async (req, res) => {
       ...project,
       sdg_goals: sdgs.rows.map(r => r.sdg_number),
       team: team.rows,
-      documents: docs.rows,
+      documents: visibleDocuments,
       videos: videos.rows,
       updates: updates.rows,
       shareholders: shareholders.rows,
       future_plans: futurePlans.rows,
       linked_projects: linkedProjects.rows,
+      phases: phases.rows,
+      funding_sources: fundingSources.rows,
+      feasibility_links: feasibilityLinks.rows,
+      districts: projectDistricts.rows,
       is_saved: isSaved,
       has_expressed_interest: Boolean(myInterest),
       my_interest: myInterest
@@ -219,6 +239,10 @@ router.post('/', authenticate, async (req, res) => {
       feasibility_status, feasibility_study_url, feasibility_notes, land_acquired,
       wef_nexus, line_ministry, provincial_contacts, partners,
       mitigation_value, mitigation_unit, mitigation_basis,
+      secondary_sector, wef_pillars, stage, carbon_credit_methodology, feasibility_type,
+      approval_loi_los, approval_departmental, approval_mocc_notification, approvals_answered_at,
+      climate_finance_available, climate_finance_amount, carbon_finance_option, carbon_finance_notes,
+      estimated_co2_reduction, phases, funding_sources, feasibility_links, districts,
       organization_name, organization_type, organization_website,
       tags, shareholders, team, videos, future_plans, linked_projects
     } = req.body;
@@ -273,6 +297,60 @@ RETURNING *
     const project = result.rows[0];
     const projectId = project.id;
 
+    // Phase II scalar fields are updated separately to keep legacy imports and
+    // the existing create statement compatible with the pre-Phase-II schema.
+    const phase2Values = {
+      secondary_sector, wef_pillars, stage, carbon_credit_methodology, feasibility_type,
+      approval_loi_los, approval_departmental, approval_mocc_notification, approvals_answered_at,
+      climate_finance_available, climate_finance_amount, carbon_finance_option, carbon_finance_notes,
+      estimated_co2_reduction,
+    };
+    const phase2Updates = Object.entries(phase2Values).filter(([, value]) => value !== undefined);
+    if (phase2Updates.length) {
+      const assignments = phase2Updates.map(([field], index) => `${field} = $${index + 1}`);
+      await client.query(`UPDATE projects SET ${assignments.join(', ')} WHERE id = $${phase2Updates.length + 1}`,
+        [...phase2Updates.map(([, value]) => n(value)), projectId]);
+    }
+
+    if (Array.isArray(districts) && districts.length) {
+      const districtIds = [...new Set(districts.map(Number).filter(Number.isInteger))];
+      const districtRows = await client.query(
+        'SELECT id FROM districts WHERE id = ANY($1::int[]) AND province = $2', [districtIds, effectiveProvince]
+      );
+      if (districtRows.rowCount !== districtIds.length) throw new Error('Each selected district must belong to the project province.');
+      for (const districtId of districtIds) {
+        await client.query('INSERT INTO project_districts (project_id, district_id) VALUES ($1, $2)', [projectId, districtId]);
+      }
+    }
+
+    if (Array.isArray(phases)) {
+      for (const [index, phase] of phases.entries()) {
+        if (!phase.phase_name?.trim()) continue;
+        await client.query(`INSERT INTO project_phases
+          (project_id, phase_name, phase_order, start_date, end_date, duration_months, status, estimated_cost)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [projectId, phase.phase_name.trim(), index + 1, n(phase.start_date), n(phase.end_date), n(phase.duration_months), n(phase.status), n(phase.estimated_cost)]);
+      }
+    }
+
+    if (Array.isArray(funding_sources)) {
+      for (const source of funding_sources) {
+        if (!source.source_type) continue;
+        await client.query(`INSERT INTO project_funding_sources
+          (project_id, source_type, provider_name, instrument, amount, currency, status)
+          VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [projectId, source.source_type, n(source.provider_name), n(source.instrument), n(source.amount), source.currency || effectiveCurrency || 'PKR', source.status || 'pipeline']);
+      }
+    }
+
+    if (Array.isArray(feasibility_links)) {
+      for (const link of feasibility_links) {
+        if (!link.title?.trim() || !link.url?.trim()) continue;
+        await client.query('INSERT INTO project_feasibility_links (project_id, title, url) VALUES ($1,$2,$3)',
+          [projectId, link.title.trim(), link.url.trim()]);
+      }
+    }
+
     // Insert SDGs
     if (sdg_goals?.length) {
       for (const sdg of sdg_goals) {
@@ -284,9 +362,9 @@ RETURNING *
     if (team?.length) {
       for (const member of team) {
         await client.query(`
-          INSERT INTO project_team (project_id, is_lead, full_name, designation, email, phone, linkedin)
-          VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `, [projectId, member.is_lead || false, member.full_name, member.designation, member.email, member.phone, member.linkedin]);
+          INSERT INTO project_team (project_id, team_name, is_lead, full_name, designation, email, phone, linkedin)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        `, [projectId, n(member.team_name), member.is_lead || false, member.full_name, member.designation, member.email, member.phone, member.linkedin]);
       }
     }
 
@@ -362,7 +440,12 @@ router.put('/:id', authenticate, async (req, res) => {
     const allowedFields = [
       'title', 'abstract', 'description', 'primary_sector', 'trl_level',
       'district', 'city', 'currency', 'total_cost', 'funding_gap',
-      'expected_roi', 'organization_name', 'tags', 'risk_level', 'priority_level'
+      'expected_roi', 'organization_name', 'tags', 'risk_level', 'priority_level',
+      'secondary_sector', 'wef_pillars', 'stage', 'carbon_credit_methodology',
+      'feasibility_type', 'approval_loi_los', 'approval_departmental',
+      'approval_mocc_notification', 'approvals_answered_at', 'climate_finance_available',
+      'climate_finance_amount', 'carbon_finance_option', 'carbon_finance_notes',
+      'estimated_co2_reduction'
     ];
 
     const updates = [];
@@ -383,6 +466,38 @@ router.put('/:id', authenticate, async (req, res) => {
       `UPDATE projects SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
       values
     );
+
+    // Phase II child collections are intentionally small; replace them as a
+    // unit so edit submissions cannot leave stale phase/funding/link rows.
+    if (Array.isArray(req.body.phases)) {
+      await pool.query('DELETE FROM project_phases WHERE project_id = $1', [id]);
+      for (const [order, phase] of req.body.phases.entries()) {
+        if (!phase.phase_name?.trim()) continue;
+        await pool.query(`INSERT INTO project_phases (project_id, phase_name, phase_order, start_date, end_date, duration_months, status, estimated_cost)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [id, phase.phase_name.trim(), order + 1, phase.start_date || null, phase.end_date || null, phase.duration_months || null, phase.status || null, phase.estimated_cost || null]);
+      }
+    }
+    if (Array.isArray(req.body.funding_sources)) {
+      await pool.query('DELETE FROM project_funding_sources WHERE project_id = $1', [id]);
+      for (const source of req.body.funding_sources) {
+        if (!source.source_type) continue;
+        await pool.query(`INSERT INTO project_funding_sources (project_id, source_type, provider_name, instrument, amount, currency, status)
+          VALUES ($1,$2,$3,$4,$5,$6,$7)`, [id, source.source_type, source.provider_name || null, source.instrument || null, source.amount || null, source.currency || result.rows[0].currency || 'PKR', source.status || 'pipeline']);
+      }
+    }
+    if (Array.isArray(req.body.feasibility_links)) {
+      await pool.query('DELETE FROM project_feasibility_links WHERE project_id = $1', [id]);
+      for (const link of req.body.feasibility_links) {
+        if (link.title?.trim() && link.url?.trim()) await pool.query('INSERT INTO project_feasibility_links (project_id, title, url) VALUES ($1,$2,$3)', [id, link.title.trim(), link.url.trim()]);
+      }
+    }
+    if (Array.isArray(req.body.districts)) {
+      const districtIds = [...new Set(req.body.districts.map(Number).filter(Number.isInteger))];
+      const valid = await pool.query('SELECT id FROM districts WHERE id = ANY($1::int[]) AND province = $2', [districtIds, proj.province]);
+      if (valid.rowCount !== districtIds.length) return res.status(400).json({ error: 'Each selected district must belong to the project province.' });
+      await pool.query('DELETE FROM project_districts WHERE project_id = $1', [id]);
+      for (const districtId of districtIds) await pool.query('INSERT INTO project_districts (project_id, district_id) VALUES ($1,$2)', [id, districtId]);
+    }
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -445,22 +560,54 @@ router.post('/:id/updates', authenticate, async (req, res) => {
   }
 });
 
-// Upload document
-router.post('/:id/documents', authenticate, upload.single('file'), async (req, res) => {
+// Upload one or more documents. `file` remains supported for legacy clients;
+// new clients submit one or more files under `files`.
+router.post('/:id/documents', authenticate, upload.fields([{ name: 'file', maxCount: 20 }, { name: 'files', maxCount: 20 }]), async (req, res) => {
   try {
     const { id } = req.params;
-    const { document_type } = req.body;
+    const files = [...(req.files?.file || []), ...(req.files?.files || [])];
+    const category = req.body.category || req.body.document_type || 'other';
+    const visibility = req.body.visibility || 'registered';
+    const title = req.body.title || null;
+    const validVisibility = ['public', 'registered', 'private'];
 
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    if (!files.length) return res.status(400).json({ error: 'No files uploaded' });
+    if (!validVisibility.includes(visibility)) return res.status(400).json({ error: 'Invalid document visibility' });
 
-    const fileUrl = `/uploads/projects/${req.file.filename}`;
-    const result = await pool.query(`
-      INSERT INTO project_documents (project_id, document_type, file_name, file_url, file_size, uploaded_by)
-      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
-    `, [id, document_type, req.file.originalname, fileUrl, req.file.size, req.user.id]);
+    const projectResult = await pool.query('SELECT user_id, province FROM projects WHERE id = $1', [id]);
+    const project = projectResult.rows[0];
+    if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    res.status(201).json(result.rows[0]);
+    const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
+    const isOwner = project.user_id === req.user.id;
+    const isProvincialOwner = req.user.role === 'provincial' && project.province === req.user.province;
+    if (!isAdmin && !isOwner && !isProvincialOwner) return res.status(403).json({ error: 'Forbidden' });
+
+    const documents = [];
+    for (const file of files) {
+      const documentId = crypto.randomUUID();
+      const key = buildStorageKey(id, file.originalname);
+      let stored;
+      try {
+        stored = await putObject({ key, buffer: file.buffer, mimeType: file.mimetype });
+        const extractedText = await extractText(file);
+        const fileUrl = stored.fileUrl || `/api/documents/${documentId}/download`;
+        const result = await pool.query(`
+          INSERT INTO project_documents
+            (id, project_id, document_type, file_name, file_url, file_size, uploaded_by, title, category, visibility, storage_key, mime_type, extracted_text)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+          RETURNING *
+        `, [documentId, id, category, file.originalname, fileUrl, file.size, req.user.id, title, category, visibility, stored.storageKey, file.mimetype, extractedText]);
+        documents.push(result.rows[0]);
+      } catch (error) {
+        if (stored?.storageKey) await deleteObject(stored.storageKey).catch(() => {});
+        throw error;
+      }
+    }
+
+    res.status(201).json({ documents });
   } catch (err) {
+    console.error('Failed to upload document:', err);
     res.status(500).json({ error: 'Failed to upload document' });
   }
 });

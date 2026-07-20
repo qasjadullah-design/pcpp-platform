@@ -11,6 +11,10 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import HomePage from './pages/public/HomePage';
 import ProjectsPage from './pages/public/ProjectsPage';
 import ProjectDetailPage from './pages/public/ProjectDetailPage';
+import SearchResultsPage from './pages/public/SearchResultsPage';
+import InvestPage from './pages/public/InvestPage';
+import SectorPage from './pages/public/SectorPage';
+import ExecutiveAnalyticsPage from './pages/public/ExecutiveAnalyticsPage';
 import LoginPage from './pages/public/LoginPage';
 import RegisterPage from './pages/public/RegisterPage';
 
@@ -50,6 +54,10 @@ const AppRoutes = () => {
       <Route path="/" element={<PublicLayout><HomePage/></PublicLayout>}/>
       <Route path="/projects" element={<PublicLayout><ProjectsPage/></PublicLayout>}/>
       <Route path="/projects/:id" element={<PublicLayout><ProjectDetailPage/></PublicLayout>}/>
+      <Route path="/search" element={<PublicLayout><SearchResultsPage/></PublicLayout>}/>
+      <Route path="/invest" element={<PublicLayout><InvestPage/></PublicLayout>}/>
+      <Route path="/invest/sector/:sector" element={<PublicLayout><SectorPage/></PublicLayout>}/>
+      <Route path="/analytics" element={<PublicLayout><ExecutiveAnalyticsPage/></PublicLayout>}/>
       <Route path="/login" element={user ? <Navigate to={getRoleHome(user.role)} replace/> : <LoginPage/>}/>
       <Route path="/register" element={user ? <Navigate to={getRoleHome(user.role)} replace/> : <RegisterPage/>}/>
 

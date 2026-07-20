@@ -225,11 +225,26 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
 
 ## 6. Current Focus / Next Actions
 
+Phase II WP-0 (Schema & Data Foundation) was applied to the live Render `pcpp_db` production database through pgAdmin on 2026-07-16: `006_move_critical_priority_to_risk.sql`, `007_add_mitigation.sql`, and `008_phase2_wef_nexus.sql` completed successfully. The funding-source taxonomy contains all 9 rows, and `009_seed_districts.sql` seeded 167 national district records. This database was originally migrated/uploaded to Render and subsequently populated with live projects; do not treat it as a disposable development database. `backend/scripts/seed_districts.js` remains available for direct database connections, while `/api/meta/districts` plus `/api/meta/funding-source-types` expose the new reference data.
+
+The pre-Phase-II production backup is at `D:\dbbackup\dbbackup.sql` (PostgreSQL custom format despite its `.sql` extension; restore with pgAdmin Restore / `pg_restore`, not Query Tool).
+
+WP-1 (Storage & Documents) is also implemented locally, pending R2 infrastructure configuration: uploads are buffered in memory, stored through an R2-compatible adapter, and extract PDF/DOCX text for Phase II search. The existing `POST /api/projects/:id/documents` path now accepts `file` (legacy) or `files` (multi-file), checks owner/admin/provincial scope, and writes category, visibility, storage, MIME, and extracted-text fields. New authenticated `GET /api/documents/:docId/download` and `DELETE /api/documents/:docId` routes preserve visibility rules. Production uploads deliberately fail without `STORAGE_DRIVER=r2` plus the required Cloudflare R2 credentials; see `backend/.env.example`. Local fallback round-trip testing passed. An R2 bucket and uploaded PDF/DOCX test documents are still required for end-to-end validation.
+
+Phase II implementation status (2026-07-18):
+- WP-1 local code complete: R2-compatible storage adapter, memory-buffered multi-file uploads, PDF/DOCX text extraction, visibility-aware download/delete routes, and local fallback verification. Render deployment still requires the R2 credentials in `backend/.env.example`.
+- WP-2 implemented locally: Phase II fields, phases, districts, funding sources, feasibility links, approvals, document/gallery upload, project detail rendering, and edit round-trip are wired.
+- WP-3 implemented locally: `GET /api/search` searches project vectors and extracted document text with fuzzy-title fallback; `/search` results page and public-header entry are wired. End-to-end search still needs uploaded PDF/DOCX test data.
+- WP-4 in progress: backend project listing accepts `priority=WEF`; `/invest` provides WEF portfolio KPIs and sector cards, `/invest/sector/:sector` drills into approved WEF projects, public navigation exposes Invest/Search, coverage is reported as X/7, and project detail links to the NDC Partnership Climate Funds Explorer.
+- WP-5 implemented locally: `/api/analytics/public?portfolio=wef|all` provides finance, funding-source, sector, province, stage, and carbon summaries. Public `/analytics` provides the portfolio toggle, KPI strip, finance funnel, source bars, and Carbon Mitigation Summary.
+- Frontend production build passed on 2026-07-18 with `DISABLE_ESLINT_PLUGIN=true`; the normal CRA ESLint cache file is locked/permission-denied in this environment, but compilation completed successfully.
+- Live frontend wiring corrected on 2026-07-20: `/search`, `/invest`, `/invest/sector/:sector`, and public `/analytics` were ported from dead `src/App.jsx` into active `src/App.js`; Invest, Analytics, and Search navigation links were added to active `src/components/layout/Navbar.jsx`. The production build passed with `DISABLE_ESLINT_PLUGIN=true`.
+
 The current UI thread is WEF Round 2 polish and conservative gated improvements. Packages A/B/C are implemented, and several gated items are implemented under stakeholder-safe assumptions.
 
 Recommended next steps before deployment:
 
-1. Apply and verify pending DB migrations in the target environment, especially `006_move_critical_priority_to_risk.sql` and the existing mitigation migration that provides `mitigation_tco2e` fields.
+1. Configure the Render backend with `STORAGE_DRIVER=r2` and the Cloudflare R2 credentials documented in `backend/.env.example`.
 2. Re-run `npm run build` from `frontend/` and backend syntax checks before pushing.
 3. Do a browser smoke test for `/dashboard/submit`, `/projects`, `/dashboard/analytics`, `/admin`, and a public project detail page once the local server can serve SPA deep links correctly.
 4. Verify admin filters: High Priority / Critical Risk should include high-priority projects and critical-risk projects.

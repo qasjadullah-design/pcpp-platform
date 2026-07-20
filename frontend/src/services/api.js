@@ -43,7 +43,16 @@ export const projectsAPI = {
   toggleSave: (id) => api.post(`/projects/${id}/save`),
   postUpdate: (id, data) => api.post(`/projects/${id}/updates`, data),
   getStats: () => api.get('/projects/stats/public'),
-  uploadFile: (id, formData) => api.post(`/projects/${id}/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadFile: (id, formData) => api.post(`/projects/${id}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
+
+export const metaAPI = {
+  getDistricts: (province) => api.get('/meta/districts', { params: province ? { province } : {} }),
+  getFundingSourceTypes: () => api.get('/meta/funding-source-types'),
+};
+
+export const searchAPI = {
+  search: (params) => api.get('/search', { params }),
 };
 
 export const interestsAPI = {
@@ -70,6 +79,7 @@ export const adminAPI = {
 
 export const analyticsAPI = {
   getOverview: () => api.get('/analytics/overview'),
+  getPublic: (portfolio = 'wef') => api.get('/analytics/public', { params: { portfolio } }),
 };
 
 export const usersAPI = {
