@@ -327,9 +327,7 @@ async function overview(req, res) {
         gap: toNumber(funding.gap),
       },
       mitigation: {
-        ndc_target_tco2e: null,
-        ndc_reference: null,
-        data_status: 'NDC target pending stakeholder source',
+        data_status: 'Reported project mitigation across the visible portfolio',
         projects_with_mitigation: toInt(mitigation.projects_with_mitigation),
         total_tco2e: toNumber(mitigation.total_tco2e),
         annual_tco2e: toNumber(mitigation.annual_tco2e),

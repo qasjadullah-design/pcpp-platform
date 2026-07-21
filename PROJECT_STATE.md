@@ -51,7 +51,7 @@ PCPP is a government project-pipeline dashboard for Pakistan's Ministry of Clima
   - Updated admin filtering so `high_or_critical` means high priority or critical risk, while legacy `priority=critical` maps to critical risk for compatibility.
   - Added a public projects location map, fixed province filtering to use a real `province` query param, returned project coordinates in public/saved project lists, added full-title card tooltips, and improved sector-tinted cards/icons.
   - Relabeled project statuses in the UI only: `draft` displays as Concept, `rejected` as Not Approved, and `under_implementation` as Implementation Ongoing. No DB enum/value migration has been performed.
-  - Added analytics aggregates for mapped CO2e mitigation and partially supported projects, plus dashboard KPIs, mitigation chart, NDC-target-pending message, and partial-support drill-down filtering.
+  - Added analytics aggregates for mapped CO2e mitigation and partially supported projects, plus dashboard KPIs, mitigation chart and summary, and partial-support drill-down filtering.
   - Added logo-ready placeholders for partner/province presentation and expanded project detail "Ownership, Partners & Standards" with partner cards and carbon standard display.
   - Follow-up: public stats now include approved-project counts by sector and province; the home page renders a live approved-projects-by-sector chart, province coverage panel, and live sector tile counts with mock fallback.
   - Follow-up: completed a color consistency scan across the touched public/dashboard surfaces; findings were limited to expected token definitions, token-driven sector colors, and existing PCPP brand gradients.
@@ -239,6 +239,7 @@ Phase II implementation status (2026-07-18):
 - WP-5 implemented locally: `/api/analytics/public?portfolio=wef|all` provides finance, funding-source, sector, province, stage, and carbon summaries. Public `/analytics` provides the portfolio toggle, KPI strip, finance funnel, source bars, and Carbon Mitigation Summary.
 - Frontend production build passed on 2026-07-18 with `DISABLE_ESLINT_PLUGIN=true`; the normal CRA ESLint cache file is locked/permission-denied in this environment, but compilation completed successfully.
 - Live frontend wiring corrected on 2026-07-20: `/search`, `/invest`, `/invest/sector/:sector`, and public `/analytics` were ported from dead `src/App.jsx` into active `src/App.js`; Invest, Analytics, and Search navigation links were added to active `src/components/layout/Navbar.jsx`. The production build passed with `DISABLE_ESLINT_PLUGIN=true`.
+- Provincial analytics terminology updated on 2026-07-21: the shared dashboard now presents a portfolio-scoped "Mitigation summary" for every provincial user, with all NDC target placeholders and messages removed.
 
 The current UI thread is WEF Round 2 polish and conservative gated improvements. Packages A/B/C are implemented, and several gated items are implemented under stakeholder-safe assumptions.
 
@@ -249,7 +250,7 @@ Recommended next steps before deployment:
 3. Do a browser smoke test for `/dashboard/submit`, `/projects`, `/dashboard/analytics`, `/admin`, and a public project detail page once the local server can serve SPA deep links correctly.
 4. Verify admin filters: High Priority / Critical Risk should include high-priority projects and critical-risk projects.
 5. Verify public project filters: province should filter independently from district, and the map should show only valid coordinate points.
-6. Verify analytics: CO2e mitigation KPIs should use existing mitigation data; NDC target should remain explicitly marked as pending until a stakeholder-approved target/reference is provided.
+6. Verify analytics: CO2e mitigation KPIs and the Mitigation summary should use existing mitigation data and remain scoped to each provincial user's visible portfolio.
 
 Remaining Round 2 items:
 

@@ -704,7 +704,7 @@ export default function AnalyticsPage() {
           />
         </ChartPanel>
 
-        <ChartPanel title="NDC mitigation summary" caption={mitigation.data_status || 'NDC target pending stakeholder source.'}>
+        <ChartPanel title="Mitigation summary" caption={mitigation.data_status || 'Reported project mitigation across the visible portfolio.'}>
           <div className="h-full flex flex-col justify-center gap-4">
             <div>
               <div className="text-sm text-ink-secondary">Currently mapped project mitigation</div>
@@ -721,7 +721,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="rounded-control border border-pcpp-border bg-white px-3 py-2 text-xs text-ink-secondary">
-              National NDC target comparison will appear when a target value and source are configured.
+              Based on mitigation values submitted for projects in the visible portfolio.
             </div>
           </div>
         </ChartPanel>
